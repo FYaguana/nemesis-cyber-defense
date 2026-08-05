@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Activar cuenta - Nemesis Cyber Defense</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#050b14;color:#e8f0f7;font-family:'Segoe UI',Arial,sans-serif;
+    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+  .card{background:#0a1420;border:1px solid #14283d;border-radius:14px;padding:32px;
+    max-width:420px;width:100%;text-align:center}
+  h1{font-size:1.3rem;color:#00aaff;margin-bottom:6px}
+  p{color:#7a95ad;font-size:.85rem;line-height:1.5;margin-bottom:16px}
+  .qr{background:white;padding:12px;border-radius:10px;display:inline-block;margin:10px 0}
+  .qr img{display:block;width:200px;height:200px}
+  .secreto{font-family:'Courier New',monospace;font-size:.8rem;color:#00ff88;
+    background:#020a12;padding:8px;border-radius:6px;word-break:break-all;margin-bottom:16px}
+  input{width:100%;padding:12px;font-size:1.3rem;text-align:center;letter-spacing:6px;
+    background:#0d1b2a;border:1px solid #14283d;border-radius:8px;color:#e8f0f7;margin-bottom:12px}
+  button{width:100%;padding:12px;background:#0062cc;color:white;border:none;border-radius:8px;
+    font-size:.95rem;font-weight:bold;cursor:pointer}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .err{color:#ff6666;font-size:.8rem;margin-top:10px;display:none}
+  .ok{color:#00ff88;font-size:.95rem;margin-top:10px;display:none}
+</style>
+</head>
+<body>
+<div class="card" id="card">
+  <h1>🛡️ Activar tu cuenta</h1>
+  <p>Cargando...</p>
+</div>
+<script>
+const URL_BASE_API = window.NEMESIS_API_URL || "http://localhost:8000";
+const params = new URLSearchParams(window.location.search);
+const token = params.get('token');
+let usuarioId = null, secreto = null;
+
+async function cargar(){
+  const card = document.getElementById('card');
+  if(!token){ card.innerHTML = '<h1>❌ Link inválido</h1><p>Falta el token de activación.</p>'; return; }
+  try{
+    const r = await fetch(`${URL_BASE_API}/api/auth/activar/preparar?token=` + encodeURIComponent(token), {credentials:'include'});
+    if(!r.ok){
+      const err = await r.json();
+      card.innerHTML = `<h1>❌ No se pudo activar</h1><p>${err.detail}</p>`;
+      return;
+    }
+    const d = await r.json();
+    usuarioId = d.usuario_id; secreto = d.secreto;
+    card.innerHTML = `
+      <h1>🛡️ Activar tu cuenta</h1>
+      <p>Hola ${d.nombre}. Tu cuenta usa verificación en dos pasos: una contraseña
+      y un código de tu app autenticadora.</p>
+
+      <p style="text-align:left;font-weight:bold;color:#e8f0f7;margin-top:16px">1. Creá tu contraseña</p>
+      <input type="password" id="password" placeholder="Contraseña (mínimo 8 caracteres)" style="margin-bottom:8px">
+      <input type="password" id="password2" placeholder="Confirmar contraseña">
+
+      <p style="text-align:left;font-weight:bold;color:#e8f0f7;margin-top:16px">2. Configurá tu segundo factor (MFA)</p>
+      <p>Escaneá este código con Google Authenticator, Authy, o tu app de códigos preferida:</p>
+      <div class="qr"><img src="data:image/png;base64,${d.qr_base64}"></div>
+      <p style="font-size:.72rem">¿No podés escanear? Ingresá esta clave manualmente:</p>
+      <div class="secreto">${secreto}</div>
+      <p>Ingresá el código de 6 dígitos que te muestra la app para confirmar:</p>
+      <input type="text" id="codigo" maxlength="6" inputmode="numeric" placeholder="000000">
+
+      <button onclick="confirmar()">Activar cuenta</button>
+      <div class="err" id="err"></div>
+      <div class="ok" id="ok"></div>
+    `;
+  }catch(e){
+    card.innerHTML = '<h1>❌ Error</h1><p>No se pudo conectar con el servidor.</p>';
+  }
+}
+
+async function confirmar(){
+  const codigo = document.getElementById('codigo').value.trim();
+  const password = document.getElementById('password').value;
+  const password2 = document.getElementById('password2').value;
+  const errEl = document.getElementById('err');
+  errEl.style.display = 'none';
+  if(password.length < 8){ errEl.textContent = 'La contraseña debe tener al menos 8 caracteres.'; errEl.style.display='block'; return; }
+  if(password !== password2){ errEl.textContent = 'Las contraseñas no coinciden.'; errEl.style.display='block'; return; }
+  if(codigo.length !== 6){ errEl.textContent = 'Ingresá los 6 dígitos del código MFA.'; errEl.style.display='block'; return; }
+  try{
+    const r = await fetch(`${URL_BASE_API}/api/auth/activar/confirmar`, {
+      credentials: 'include',
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({usuario_id: usuarioId, secreto, codigo,
+        password, password_confirmacion: password2})
+    });
+    const d = await r.json();
+    if(!r.ok){ errEl.textContent = d.detail || 'No se pudo activar la cuenta.'; errEl.style.display='block'; return; }
+    document.getElementById('card').innerHTML =
+      '<h1>✅ Cuenta activada</h1><p>Ya podés iniciar sesión con tu correo, tu contraseña y el código de tu app autenticadora.</p>' +
+      '<button onclick="window.location.href=\'/\'">Ir al login</button>';
+  }catch(e){
+    errEl.textContent = 'Error de conexión: ' + e.message; errEl.style.display='block';
+  }
+}
+cargar();
+</script>
+</body>
+</html>

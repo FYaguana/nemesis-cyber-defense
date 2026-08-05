@@ -1,0 +1,95 @@
+{
+  "modelo": "Nemesis_RNN",
+  "recall": 0.2,
+  "precision": 0.1303,
+  "f1_score": 0.1578,
+  "reporte": {
+    "DoS": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 148.0
+    },
+    "NORMAL": {
+      "precision": 0.6515151515151515,
+      "recall": 1.0,
+      "f1-score": 0.7889908256880734,
+      "support": 645.0
+    },
+    "Probe": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 97.0
+    },
+    "R2L": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 50.0
+    },
+    "U2R": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 50.0
+    },
+    "accuracy": 0.6515151515151515,
+    "macro avg": {
+      "precision": 0.1303030303030303,
+      "recall": 0.2,
+      "f1-score": 0.1577981651376147,
+      "support": 990.0
+    },
+    "weighted avg": {
+      "precision": 0.4244719926538108,
+      "recall": 0.6515151515151515,
+      "f1-score": 0.5140394773422297,
+      "support": 990.0
+    }
+  },
+  "matriz_confusion": [
+    [
+      0,
+      148,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      645,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      97,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      50,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      50,
+      0,
+      0,
+      0
+    ]
+  ],
+  "clases": [
+    "DoS",
+    "NORMAL",
+    "Probe",
+    "R2L",
+    "U2R"
+  ]
+}

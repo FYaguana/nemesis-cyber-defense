@@ -1,0 +1,1630 @@
+<!DOCTYPE html>
+<html lang="es"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nemesis – Dashboard</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#050c14;--s:#0d1521;--s2:#111f35;--b:#1e3a5f;--a:#00d4ff;
+  --g:#00ff88;--r:#ff4444;--y:#ffaa00;--p:#aa66ff;--t:#c8d8e8;--m:#4a6a8a}
+body{font-family:'Rajdhani',sans-serif;background:var(--bg);color:var(--t);
+  min-height:100vh;display:flex}
+.sb{width:210px;flex-shrink:0;background:var(--s);border-right:1px solid var(--b);
+  display:flex;flex-direction:column;height:100vh;position:sticky;top:0}
+.sb-logo{padding:18px;border-bottom:1px solid var(--b);
+  display:flex;align-items:center;gap:9px}
+.sb-icon{width:34px;height:34px;background:linear-gradient(135deg,#0062cc,#00d4ff);
+  border-radius:8px;display:flex;align-items:center;justify-content:center;
+  font-size:15px;flex-shrink:0;box-shadow:0 0 14px rgba(0,212,255,.3)}
+.sb-logo h2{font-size:.82rem;color:var(--a);font-weight:700;letter-spacing:1.5px}
+.sb-logo p{font-size:.6rem;color:var(--m);font-family:'Share Tech Mono',monospace}
+.nav{flex:1;padding:12px 0}
+.ns{font-size:.6rem;color:var(--m);font-family:'Share Tech Mono',monospace;
+  padding:8px 18px 3px;letter-spacing:1px}
+.ni{display:flex;align-items:center;gap:9px;padding:9px 18px;cursor:pointer;
+  font-size:.86rem;font-weight:600;color:var(--m);transition:all .2s;
+  border-left:3px solid transparent;letter-spacing:.3px}
+.ni:hover{color:var(--t);background:var(--s2)}
+.ni.on{color:var(--a);background:rgba(0,212,255,.05);border-left-color:var(--a)}
+.ni .ic{font-size:.95rem;width:18px;text-align:center}
+.up{padding:14px;border-top:1px solid var(--b)}
+.uc{display:flex;align-items:center;gap:9px;background:var(--s2);
+  border-radius:9px;padding:9px;margin-bottom:9px}
+.av{width:34px;height:34px;border-radius:50%;
+  background:linear-gradient(135deg,#0062cc,#00d4ff);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:700;color:#fff;font-size:.9rem;flex-shrink:0}
+.un{font-size:.8rem;font-weight:600;color:var(--t)}
+.ur{font-size:.65rem;color:var(--m);font-family:'Share Tech Mono',monospace}
+.btn-lo{width:100%;padding:7px;border:1px solid var(--b);background:transparent;
+  border-radius:7px;color:var(--m);font-family:'Rajdhani',sans-serif;
+  font-size:.78rem;cursor:pointer;transition:all .2s;letter-spacing:.5px}
+.btn-lo:hover{border-color:#ff444433;color:#ff8888;background:#1a050533}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.tb{height:54px;background:var(--s);border-bottom:1px solid var(--b);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 24px;flex-shrink:0}
+.tb h1{font-size:.95rem;font-weight:700;color:var(--t);letter-spacing:.8px}
+.tbr{display:flex;align-items:center;gap:14px}
+.live{display:flex;align-items:center;gap:5px;font-size:.7rem;color:var(--g);
+  font-family:'Share Tech Mono',monospace}
+.ld{width:6px;height:6px;border-radius:50%;background:var(--g);
+  animation:bl 1.5s ease infinite}
+@keyframes bl{0%,100%{opacity:1}50%{opacity:.2}}
+.clk{font-family:'Share Tech Mono',monospace;font-size:.75rem;color:var(--m)}
+.btn-an{padding:6px 14px;background:linear-gradient(135deg,#0062cc,#00d4ff);
+  border:none;border-radius:7px;color:#fff;font-family:'Rajdhani',sans-serif;
+  font-size:.8rem;font-weight:700;cursor:pointer;letter-spacing:.5px;transition:all .2s}
+.btn-an:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(0,212,255,.3)}
+.cnt{flex:1;overflow-y:auto;padding:20px 24px}
+.kpi-g{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.kpi{background:var(--s);border:1px solid var(--b);border-radius:11px;
+  padding:18px;position:relative;overflow:hidden;transition:transform .2s}
+.kpi:hover{transform:translateY(-2px)}
+.kpi::after{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.kpi.r::after{background:linear-gradient(90deg,#ff4444,#ff888844)}
+.kpi.y::after{background:linear-gradient(90deg,#ffaa00,#ffcc4444)}
+.kpi.g::after{background:linear-gradient(90deg,#00ff88,#00cc6644)}
+.kpi.b::after{background:linear-gradient(90deg,#00d4ff,#0088cc44)}
+.kpi-lbl{font-size:.68rem;color:var(--m);font-weight:600;letter-spacing:.5px;margin-bottom:7px}
+.kpi-v{font-size:2rem;font-weight:700;line-height:1}
+.kpi.r .kpi-v{color:#ff4444}.kpi.y .kpi-v{color:#ffaa00}
+.kpi.g .kpi-v{color:#00ff88}.kpi.b .kpi-v{color:#00d4ff}
+.kpi-s{font-size:.68rem;color:var(--m);margin-top:5px;font-family:'Share Tech Mono',monospace}
+.kpi-ico{position:absolute;right:14px;top:14px;font-size:1.4rem;opacity:.18}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.g3{display:grid;grid-template-columns:1.4fr 1fr;gap:14px;margin-bottom:14px}
+.panel{background:var(--s);border:1px solid var(--b);border-radius:11px;padding:18px}
+.ph{display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--b)}
+.pt{font-size:.84rem;font-weight:700;color:var(--a);letter-spacing:.5px}
+.pb{font-size:.62rem;font-family:'Share Tech Mono',monospace;
+  padding:3px 7px;border-radius:10px}
+.bl{background:#00ff8822;color:#00ff88;border:1px solid #00ff8844}
+.bai{background:#aa66ff22;color:#aa66ff;border:1px solid #aa66ff44}
+canvas{width:100%!important}
+.tbtns{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}
+.tbtn{padding:7px 13px;border:1px solid var(--b);border-radius:7px;
+  background:var(--s2);color:var(--m);font-family:'Rajdhani',sans-serif;
+  font-size:.8rem;font-weight:600;cursor:pointer;transition:all .2s}
+.tbtn:hover{color:var(--t)}
+.t-n:hover,.t-n.on{background:#00ff8811;color:#00ff88;border-color:#00ff8844}
+.t-d:hover,.t-d.on{background:#ff444411;color:#ff4444;border-color:#ff444444}
+.t-pr:hover,.t-pr.on{background:#4488ff11;color:#4488ff;border-color:#4488ff44}
+.t-r:hover,.t-r.on{background:#ffaa0011;color:#ffaa00;border-color:#ffaa0044}
+.t-u:hover,.t-u.on{background:#aa66ff11;color:#aa66ff;border-color:#aa66ff44}
+.t-a:hover,.t-a.on{background:#00d4ff11;color:#00d4ff;border-color:#00d4ff44}
+.rb{border-radius:9px;padding:14px;background:var(--s2);border:1px solid var(--b);
+  min-height:90px;transition:border-color .3s;font-size:.83rem}
+.rb.rn{border-color:#00ff8855}
+.rb.rc{border-color:#ff444455;animation:pr 1.5s infinite}
+.rb.ra{border-color:#ffaa0055}
+@keyframes pr{0%,100%{box-shadow:0 0 0 0 rgba(255,68,68,.15)}
+  50%{box-shadow:0 0 0 5px rgba(255,68,68,0)}}
+.al-list{max-height:300px;overflow-y:auto}
+.al-item{display:flex;gap:10px;padding:9px;border-radius:7px;
+  background:var(--s2);border:1px solid var(--b);margin-bottom:7px;transition:background .2s}
+.al-item:hover{background:#152030}
+.al-sev{width:3px;border-radius:2px;flex-shrink:0}
+.al-body{flex:1;min-width:0}
+.al-title{font-size:.8rem;font-weight:700;color:var(--t)}
+.al-desc{font-size:.7rem;color:var(--m);margin-top:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.al-meta{font-size:.63rem;color:var(--m);margin-top:3px;
+  font-family:'Share Tech Mono',monospace;display:flex;gap:8px}
+.cb{padding:2px 6px;border-radius:7px;font-size:.63rem;
+  font-family:'Share Tech Mono',monospace;font-weight:700}
+.sC{background:#ff4444}.sA{background:#ffaa00}.sN{background:#00ff88}.sI{background:#00aaff}
+.cC{background:#ff444422;color:#ff4444;border:1px solid #ff444433}
+.cA{background:#ffaa0022;color:#ffaa00;border:1px solid #ffaa0033}
+.cN{background:#00ff8822;color:#00ff88;border:1px solid #00ff8833}
+.ia-box{background:linear-gradient(135deg,rgba(170,102,255,.05),rgba(0,212,255,.02));
+  border:1px solid rgba(170,102,255,.18);border-radius:9px;
+  padding:14px;font-size:.8rem;line-height:1.6}
+.ia-th{display:flex;align-items:center;gap:7px;color:var(--p);
+  font-size:.75rem;font-family:'Share Tech Mono',monospace}
+.ia-dots span{display:inline-block;width:5px;height:5px;border-radius:50%;
+  background:var(--p);margin:0 2px;animation:db .8s ease infinite}
+.ia-dots span:nth-child(2){animation-delay:.15s}
+.ia-dots span:nth-child(3){animation-delay:.3s}
+@keyframes db{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+.ia-step{display:flex;gap:9px;margin-bottom:7px;padding:8px;
+  border-radius:7px;background:rgba(0,0,0,.18)}
+.ia-num{width:20px;height:20px;border-radius:50%;background:var(--p);
+  color:#fff;display:flex;align-items:center;justify-content:center;
+  font-size:.68rem;font-weight:700;flex-shrink:0}
+.ia-txt{font-size:.78rem}
+#log{background:#020a12;border:1px solid #0d2035;border-radius:7px;
+  padding:10px;font-family:'Share Tech Mono',monospace;font-size:.7rem;
+  height:130px;overflow-y:auto;color:#00aa44;line-height:1.6}
+.tmap{background:#020a12;border-radius:7px;height:140px;position:relative;overflow:hidden}
+.mdot{position:absolute;width:7px;height:7px;border-radius:50%;
+  animation:mp 2s ease infinite}
+@keyframes mp{0%,100%{transform:scale(1);opacity:.8}50%{transform:scale(2.5);opacity:.15}}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:var(--s)}
+::-webkit-scrollbar-thumb{background:#1e3a5f;border-radius:2px}
+</style></head><body>
+
+<aside class="sb">
+  <div class="sb-logo">
+    <div class="sb-icon">🛡️</div>
+    <div><h2>NEMESIS</h2><p>CYBER DEFENSE v2.0</p></div>
+  </div>
+  <nav class="nav">
+    <div class="ns">PRINCIPAL</div>
+    <div class="ni on" id="ni-dashboard" onclick="pg('dashboard',this)">
+      <span class="ic">📊</span>Dashboard</div>
+    <div class="ni" id="ni-redreal" onclick="pg('redreal',this)">
+      <span class="ic">🌐</span>Monitoreo de Red</div>
+    <div class="ni" id="ni-analizador" onclick="pg('analizador',this)">
+      <span class="ic">🔍</span>Analizador</div>
+    <div class="ni" id="ni-alertas" onclick="pg('alertas',this)">
+      <span class="ic">🚨</span>Alertas
+      <span id="badge" style="margin-left:auto;background:#ff444422;color:#ff4444;
+        border-radius:8px;padding:1px 6px;font-size:.62rem;font-family:'Share Tech Mono',monospace">0</span>
+    </div>
+    <div class="ns" style="margin-top:6px">SOPORTE</div>
+    <div class="ni" id="ni-recomendaciones" onclick="pg('recomendaciones',this)">
+      <span class="ic">✨</span>Recomendaciones</div>
+    <div class="ni" id="ni-usuarios" onclick="pg('usuarios',this)">
+      <span class="ic">👥</span>Usuarios</div>
+  </nav>
+  <div class="up">
+    <div class="uc">
+      <div class="av">·</div>
+      <div><div class="un">Cargando...</div><div class="ur"></div></div>
+    </div>
+    <button class="btn-lo" onclick="logout()">⟵ CERRAR SESIÓN</button>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="tb">
+    <h1 id="ptitle">PANEL DE CONTROL</h1>
+    <div class="tbr">
+      <div class="live"><div class="ld"></div>Sistema Activo</div>
+      <div class="clk" id="clk">--:--:--</div>
+      <button class="btn-an" onclick="analizar('aleatorio')">⚡ Analizar</button>
+    </div>
+  </div>
+  <div class="cnt" id="cnt"></div>
+</main>
+
+<script>
+const URL_BASE_API = window.NEMESIS_API_URL || "http://localhost:8000";
+// ── Estado global ──────────────────────────────────────────────────────────
+let ROL_USUARIO = null;
+const C={criticas:0,advertencias:0,normales:0,total:0};
+let alertas=[], monitoreo=false, mTimer=null, pg_act='dashboard';
+let rrPolling=false, rrTimer=null, rrIndice=0, rrNormales=0, rrRevisar=0;
+const TIPOS=['normal','normal','normal','dos','probe','r2l','u2r','normal','dos'];
+let tIdx=0;
+const COL={NORMAL:'#00ff88',DoS:'#ff4444',Probe:'#4488ff',R2L:'#ffaa00',U2R:'#aa66ff'};
+const TITULOS={dashboard:'PANEL DE CONTROL',analizador:'ANALIZADOR DE TRÁFICO',
+  alertas:'CENTRO DE ALERTAS',modelos:'MODELOS DEEP LEARNING',
+  redreal:'CAPTURA DE RED REAL',
+  recomendaciones:'RECOMENDACIONES IA',experimentos:'RESULTADOS – CAP. 4',
+  usuarios:'GESTIÓN DE USUARIOS'};
+
+setInterval(()=>document.getElementById('clk').textContent=
+  new Date().toLocaleTimeString('es-EC'),1000);
+
+// ── Navegación ─────────────────────────────────────────────────────────────
+function pg(p,el){
+  pg_act=p;
+  document.getElementById('ptitle').textContent=TITULOS[p]||p;
+  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('on'));
+  if(el)el.classList.add('on');
+  render(p);
+}
+
+function render(p){
+  const c=document.getElementById('cnt');
+  if(p==='dashboard'){c.innerHTML=tDash();initC();}
+  else if(p==='analizador')c.innerHTML=tAnaliz();
+  else if(p==='alertas')c.innerHTML=tAlertas();
+  else if(p==='modelos'){c.innerHTML=tModelos();loadMetrics();}
+  else if(p==='redreal'){c.innerHTML=tRedReal();initRedReal();}
+  else if(p==='recomendaciones'){c.innerHTML=tRec();initRec();}
+  else if(p==='experimentos'){c.innerHTML=tExp();loadExp();}
+  else if(p==='usuarios'){c.innerHTML=tUsuarios();initUsuarios();}
+}
+
+// ── Templates ──────────────────────────────────────────────────────────────
+function tDash(){return`
+<div class="kpi-g">
+  <div class="kpi r"><div class="kpi-ico">🔴</div>
+    <div class="kpi-lbl">ALERTAS CRÍTICAS</div>
+    <div class="kpi-v" id="kc">${C.criticas}</div>
+    <div class="kpi-s">Atención inmediata</div></div>
+  <div class="kpi y"><div class="kpi-ico">🟡</div>
+    <div class="kpi-lbl">ADVERTENCIAS</div>
+    <div class="kpi-v" id="ka">${C.advertencias}</div>
+    <div class="kpi-s">Revisar &lt; 30 min</div></div>
+  <div class="kpi g"><div class="kpi-ico">✅</div>
+    <div class="kpi-lbl">TRÁFICO NORMAL</div>
+    <div class="kpi-v" id="kn">${C.normales}</div>
+    <div class="kpi-s">Verificado</div></div>
+  <div class="kpi b"><div class="kpi-ico">📊</div>
+    <div class="kpi-lbl">TOTAL ANALIZADOS</div>
+    <div class="kpi-v" id="kt">${C.total}</div>
+    <div class="kpi-s">Eventos procesados</div></div>
+</div>
+<div class="g2">
+  <div class="panel">
+    <div class="ph"><span class="pt">📈 DETECCIONES EN TIEMPO REAL</span>
+      <span class="pb bl">● EN VIVO</span></div>
+    <canvas id="cLine" height="150"></canvas>
+  </div>
+  <div class="panel">
+    <div class="ph"><span class="pt">🎯 DISTRIBUCIÓN DE ATAQUES</span>
+      <span class="pb bl">● EN VIVO</span></div>
+    <canvas id="cDonut" height="150"></canvas>
+  </div>
+</div>
+<div class="g3">
+  <div class="panel">
+    <div class="ph"><span class="pt">🚨 ÚLTIMAS ALERTAS</span>
+      <span class="pb bl">● TIEMPO REAL</span></div>
+    <div class="al-list" id="dash-al">
+      <div style="color:var(--m);font-size:.8rem;padding:16px;text-align:center">
+        Usa <b style="color:var(--a)">⚡ Analizar</b> para comenzar</div>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="ph"><span class="pt">🗺️ MAPA DE AMENAZAS</span></div>
+    <div class="tmap" id="tmap">
+      <svg width="100%" height="100%" viewBox="0 0 300 140" style="opacity:.2">
+        <text x="150" y="75" text-anchor="middle" fill="#00d4ff" font-size="10"
+          font-family="Share Tech Mono">MONITOREO ACTIVO</text></svg>
+    </div>
+    <div style="margin-top:10px"><div id="log" style="background:#020a12;border:1px solid #0d2035;
+      border-radius:7px;padding:10px;font-family:'Share Tech Mono',monospace;font-size:.68rem;
+      height:110px;overflow-y:auto;color:#00aa44;line-height:1.6">[NEMESIS] Sistema listo ✓</div></div>
+  </div>
+</div>`;}
+
+function tAnaliz(){return`
+<div class="panel" style="margin-bottom:14px">
+  <div class="ph"><span class="pt">🔍 ANALIZADOR DE TRÁFICO</span>
+    <span class="pb bl">● MLP + RNN/LSTM</span></div>
+  <div class="tbtns">
+    <button class="tbtn t-n" onclick="analizar('normal')">✅ Normal</button>
+    <button class="tbtn t-d" onclick="analizar('dos')">⚡ Simular DoS</button>
+    <button class="tbtn t-pr" onclick="analizar('probe')">🔭 Simular Probe</button>
+    <button class="tbtn t-r" onclick="analizar('r2l')">🔑 Simular R2L</button>
+    <button class="tbtn t-u" onclick="analizar('u2r')">☠️ Simular U2R</button>
+    <button class="tbtn t-a" id="btn-auto" onclick="togAuto()">▶ Auto</button>
+  </div>
+  <div class="rb" id="rb">
+    <span style="color:var(--m)">← Selecciona un tipo de tráfico para analizar</span>
+  </div>
+</div>
+<div class="g2">
+  <div class="panel">
+    <div class="ph"><span class="pt">✨ RECOMENDACIONES IA</span>
+      <span class="pb bai">🤖 IA</span></div>
+    <div id="ia-p">
+      <div style="color:var(--m);font-size:.8rem;text-align:center;padding:16px">
+        Analiza un evento para ver las recomendaciones</div>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="ph"><span class="pt">📋 LOG DE EVENTOS</span></div>
+    <div id="log" style="background:#020a12;border:1px solid #0d2035;border-radius:7px;
+      padding:10px;font-family:'Share Tech Mono',monospace;font-size:.7rem;
+      height:200px;overflow-y:auto;color:#00aa44;line-height:1.6">
+      [NEMESIS] Analizador listo...</div>
+  </div>
+</div>`;}
+
+function tAlertas(){
+  const html=alertas.length===0
+    ?'<div style="color:var(--m);text-align:center;padding:40px;font-size:.85rem">Sin alertas registradas</div>'
+    :alertas.map((a,i)=>alHTML(a,i)).join('');
+  return`<div class="panel">
+    <div class="ph"><span class="pt">🚨 CENTRO DE ALERTAS PREDICTIVAS</span>
+      <span class="pb bl">Total: ${alertas.length}</span></div>
+    <div class="tbtns">
+      <button class="tbtn" onclick="filtrar('todas')">Todas</button>
+      <button class="tbtn t-d" onclick="filtrar('CRÍTICO')">Críticas</button>
+      <button class="tbtn t-r" onclick="filtrar('ADVERTENCIA')">Advertencias</button>
+    </div>
+    <div id="lista-al">${html}</div>
+  </div>`;}
+
+function tModelos(){return`
+<div class="kpi-g">
+  <div class="kpi b"><div class="kpi-ico">🧠</div>
+    <div class="kpi-lbl">MLP RECALL</div>
+    <div class="kpi-v" id="m-r">—</div><div class="kpi-s">Métrica prioritaria</div></div>
+  <div class="kpi g"><div class="kpi-ico">🎯</div>
+    <div class="kpi-lbl">PRECISIÓN</div>
+    <div class="kpi-v" id="m-p">—</div><div class="kpi-s">Calidad de alertas</div></div>
+  <div class="kpi b"><div class="kpi-ico">⚖️</div>
+    <div class="kpi-lbl">F1-SCORE</div>
+    <div class="kpi-v" id="m-f">—</div><div class="kpi-s">Balance P/R</div></div>
+  <div class="kpi g"><div class="kpi-ico">✅</div>
+    <div class="kpi-lbl">ACCURACY</div>
+    <div class="kpi-v" id="m-a">—</div><div class="kpi-s">Exactitud global</div></div>
+</div>
+<div class="g2">
+  <div class="panel">
+    <div class="ph"><span class="pt">🏗️ ARQUITECTURA MLP</span></div>
+    ${arcMLP()}
+  </div>
+  <div class="panel">
+    <div class="ph"><span class="pt">🔄 ARQUITECTURA RNN/LSTM</span></div>
+    ${arcRNN()}
+  </div>
+</div>`;}
+
+function tRedReal(){return`
+<div class="panel" style="margin-bottom:14px">
+  <div class="ph"><span class="pt">🌐 MONITOREO DE RED</span>
+    <span class="pb" style="background:#00ff8822;color:#00ff88;border:1px solid #00ff8844">
+      ● DATOS REALES (no simulados)</span></div>
+  <p style="font-size:.8rem;color:var(--m);margin-bottom:14px">
+    Analiza en vivo el tráfico real de esta red con el mismo motor de IA del
+    sistema. Corre en segundo plano de forma continua mientras el servidor
+    esté encendido.
+  </p>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px">
+    <div>
+      <label style="display:block;font-size:.7rem;color:var(--m);margin-bottom:4px">INTERFAZ DE RED</label>
+      <input type="text" id="rr-iface" placeholder="Autodetectar" 
+        style="padding:8px 12px;background:var(--s2);border:1px solid var(--b);
+        border-radius:7px;color:var(--t);font-family:'Rajdhani',sans-serif;font-size:.85rem;width:150px">
+    </div>
+    <div>
+      <label style="display:block;font-size:.7rem;color:var(--m);margin-bottom:4px">SENSIBILIDAD</label>
+      <select id="rr-ventana" style="padding:8px 12px;background:var(--s2);border:1px solid var(--b);
+        border-radius:7px;color:var(--t);font-family:'Rajdhani',sans-serif;font-size:.85rem;width:130px">
+        <option value="3">Alta (3s)</option>
+        <option value="5" selected>Normal (5s)</option>
+        <option value="10">Baja (10s)</option>
+      </select>
+    </div>
+    <button class="btn-an" id="rr-btn" onclick="alternarMonitoreoRR()">▶ Iniciar monitoreo</button>
+  </div>
+  <div id="rr-error" style="display:none;background:#1a0505;border:1px solid #ff444433;
+    border-radius:8px;padding:10px 14px;color:#ff8888;font-size:.8rem;margin-bottom:12px"></div>
+
+  <div style="display:flex;gap:22px;align-items:center;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="width:10px;height:10px;border-radius:50%;display:inline-block" id="rr-estado-dot"></span>
+      <b id="rr-estado" style="font-size:.85rem;color:var(--m)">Verificando estado...</b>
+      <span id="rr-iface-actual" style="font-size:.72rem;color:var(--m)"></span>
+    </div>
+    <span style="font-size:.82rem;color:var(--t)">
+      <b id="rr-total" style="color:var(--a)">0</b> conexiones analizadas
+      &nbsp;·&nbsp; <b id="rr-normales" style="color:#00ff88">0</b> normales
+      &nbsp;·&nbsp; <b id="rr-revisar" style="color:#ffaa00">0</b> para revisar
+    </span>
+  </div>
+  <div id="rr-warn" style="display:none;margin-top:8px;font-size:.72rem;color:#ffaa00"></div>
+</div>
+
+<div class="panel" style="margin-bottom:14px">
+  <button onclick="const e=document.getElementById('rr-explicacion');e.style.display=e.style.display==='none'?'block':'none';"
+    style="background:none;border:none;color:var(--a);font-size:.8rem;cursor:pointer;padding:0;
+    display:flex;align-items:center;gap:6px;width:100%;text-align:left">
+    ℹ️ ¿Cómo funciona esta clasificación?
+  </button>
+  <div id="rr-explicacion" style="display:none;margin-top:12px;font-size:.82rem;color:var(--t);line-height:1.6">
+    <p style="margin-bottom:10px">
+      Cada conexión se evalúa con el <b>mismo modelo de IA entrenado previamente</b>
+      (dos redes neuronales, una MLP y una RNN, entrenadas con miles de ejemplos
+      de tráfico normal y de ataques reales). No es una regla fija tipo "si-entonces":
+      el modelo aprendió a reconocer patrones y da un puntaje de qué tan parecida
+      es cada conexión a un ataque conocido.
+    </p>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <span>🟢</span>
+        <span><b>Normal:</b> el modelo no encontró un patrón parecido a ningún tipo de ataque conocido.</span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <span>🟡</span>
+        <span><b>Para revisar:</b> el patrón se parece parcialmente a un ataque, pero sin suficiente
+          certeza como para ser una alerta crítica. Vale la pena mirarlo si se repite seguido.</span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <span>🔴</span>
+        <span><b>Atención:</b> el modelo encontró una coincidencia fuerte con un patrón de ataque conocido
+          (ej. denegación de servicio, escaneo de puertos, intento de acceso no autorizado). Requiere revisión inmediata.</span>
+      </div>
+    </div>
+    <p style="margin-top:10px;color:var(--m);font-size:.76rem">
+      Nota: como todo modelo de IA, puede haber falsos positivos — tráfico normal que
+      por sus características estadísticas se parece a un patrón sospechoso (por ejemplo,
+      ráfagas de descarga o anuncios de dispositivos en la red). Por eso el nivel "Para revisar"
+      existe como zona intermedia, en vez de solo Normal/Atención.
+    </p>
+    <p style="margin-top:10px;color:var(--t);font-size:.78rem;border-top:1px solid var(--b);padding-top:10px">
+      <b>Dispositivo de origen:</b> se identifica por el fabricante de la tarjeta de red
+      (los primeros dígitos de su dirección MAC) — permite saber si la conexión viene de,
+      por ejemplo, un iPhone, una Raspberry Pi, o un dispositivo IoT, sin necesitar acceso
+      al dispositivo en sí.<br><br>
+      <b>Confiabilidad del destino:</b> no es una lista fija de "buenos y malos" — se calcula
+      según el historial real de esa IP en tu red durante esta sesión (cuántas veces salió
+      normal vs. anómala). Por eso una IP nueva siempre arranca como "poco historial" hasta
+      que el sistema junta suficientes observaciones.
+    </p>
+  </div>
+</div>
+
+<div class="g2">
+  <div class="panel">
+    <div class="ph"><span class="pt">🔎 ÚLTIMA CONEXIÓN ANALIZADA</span></div>
+    <div id="rr-resultado">
+      <div style="text-align:center;padding:30px 10px;color:var(--m);font-size:.82rem">
+        ← El monitoreo se está iniciando...
+      </div>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="ph"><span class="pt">📋 ACTIVIDAD RECIENTE</span></div>
+
+    <div id="rr-eventos" style="height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:6px">
+      <div style="text-align:center;padding:30px 10px;color:var(--m);font-size:.8rem">
+        Todavía no hay conexiones registradas.
+      </div>
+    </div>
+  </div>
+</div>
+${ROL_USUARIO === 'Administrador' ? `
+<div class="panel" style="margin-top:14px">
+  <div class="ph"><span class="pt">🧠 MEJORAR EL MODELO CON DATOS REALES</span></div>
+  <p style="font-size:.8rem;color:var(--m);margin-bottom:12px">
+    Cada vez que confirmás o corregís una detección en el Centro de Alertas,
+    esa muestra real queda disponible para reentrenar el modelo — combinada
+    con la base de datos NSL-KDD del proyecto, nunca reemplazándola. Esto es
+    aprendizaje activo (human-in-the-loop): el modelo solo aprende de
+    correcciones humanas, nunca de sus propias predicciones. El conjunto de
+    prueba (test) se mantiene siempre igual, para comparar resultados de
+    forma justa entre reentrenamientos.
+  </p>
+  <div id="rt-stats" style="display:flex;gap:16px;margin-bottom:14px;font-size:.82rem;color:var(--t)">
+    Cargando estadísticas...
+  </div>
+  <button class="btn-an" id="rt-btn" onclick="iniciarReentrenamiento()">🧠 Reentrenar modelo con datos reales</button>
+  <div id="rt-progreso" style="display:none;margin-top:12px">
+    <div style="display:flex;justify-content:space-between;font-size:.75rem;margin-bottom:5px">
+      <span id="rt-paso" style="color:var(--m)">Iniciando...</span>
+      <span id="rt-pct" style="color:var(--a)">0%</span>
+    </div>
+    <div style="background:#0a1825;border-radius:6px;height:8px">
+      <div id="rt-barra" style="width:0%;height:8px;border-radius:6px;
+        background:linear-gradient(90deg,#aa66ff,#00d4ff);transition:width .5s"></div>
+    </div>
+  </div>
+  <div id="rt-resultado" style="display:none;margin-top:12px;padding:10px 14px;background:#051a0a;
+    border:1px solid #00ff8844;border-radius:8px;font-size:.8rem;color:#00ff88"></div>
+  <div id="rt-error" style="display:none;margin-top:12px;padding:10px 14px;background:#1a0505;
+    border:1px solid #ff444433;border-radius:8px;font-size:.8rem;color:#ff8888"></div>
+</div>` : ''}`;}
+
+// Diccionario de puertos/destinos comunes en redes domésticas y corporativas,
+// para traducir el flujo técnico a una frase entendible por cualquiera.
+const SERVICIOS_CONOCIDOS = {
+  53:'resolución de nombres (DNS)', 80:'navegación web (HTTP)',
+  443:'navegación web segura (HTTPS)', 22:'acceso remoto (SSH)',
+  21:'transferencia de archivos (FTP)', 25:'correo saliente (SMTP)',
+  1900:'descubrimiento de dispositivos (SSDP/UPnP)',
+  5353:'descubrimiento de dispositivos (mDNS)',
+  67:'asignación de red (DHCP)', 68:'asignación de red (DHCP)',
+};
+
+function describirDestino(flujo){
+  if(!flujo) return 'un destino desconocido';
+  const ip = flujo.dst_ip || '';
+  const puerto = flujo.dst_port;
+  const serv = SERVICIOS_CONOCIDOS[puerto];
+  const esPrivada = /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ip);
+  const esAnuncio = ip.startsWith('239.') || ip.startsWith('224.') || ip === '255.255.255.255';
+
+  if(esAnuncio)
+    return `un dispositivo de tu red anunciándose${serv ? ' — '+serv : ' (normal, ej. un router o smart TV)'}`;
+  if(serv && esPrivada)
+    return `${serv}, con un equipo de tu propia red (${ip})`;
+  if(serv)
+    return `${serv}, con un servidor en internet (${ip})`;
+  if(esPrivada)
+    return `otro equipo dentro de tu red local (${ip}${puerto ? ', puerto '+puerto : ''})`;
+  return `un servidor en internet (${ip}${puerto ? ', puerto '+puerto : ''})`;
+}
+
+function clasificarNivel(d){
+  // Traduce severidad+confianza técnica a 3 niveles simples de semáforo.
+  if(d.clase === 'NORMAL' || d.severidad === 'NORMAL')
+    return {nivel:'normal', color:'#00ff88', icono:'🟢', texto:'Normal'};
+  if(d.severidad === 'CRÍTICO')
+    return {nivel:'atencion', color:'#ff4444', icono:'🔴', texto:'Atención'};
+  return {nivel:'revisar', color:'#ffaa00', icono:'🟡', texto:'Para revisar'};
+}
+
+function initRedReal(){
+  actualizarEstadoRR();
+  if(!rrPolling) iniciarPollingRR();
+  if(ROL_USUARIO === 'Administrador') cargarStatsReentrenamiento();
+}
+
+async function cargarStatsReentrenamiento(){
+  const el = document.getElementById('rt-stats');
+  if(!el) return;
+  try{
+    const r = await fetch(`${URL_BASE_API}/api/alertas/capturas/estadisticas`, {credentials:'include'});
+    const d = await r.json();
+    const porClase = Object.entries(d.por_clase || {}).map(([k,v]) => `${k}: ${v}`).join(' · ') || 'ninguna todavía';
+    el.innerHTML = `
+      <span><b style="color:var(--a)">${d.total}</b> conexiones reales capturadas</span>
+      <span><b style="color:#00ff88">${d.etiquetadas}</b> confirmadas por un analista</span>
+      <span style="color:var(--m);font-size:.75rem">(${porClase})</span>`;
+    const btn = document.getElementById('rt-btn');
+    if(btn) btn.disabled = d.etiquetadas < 5;
+    if(d.etiquetadas < 5 && el){
+      el.innerHTML += `<div style="width:100%;color:var(--m);font-size:.72rem;margin-top:4px">
+        Necesitás al menos 5 muestras confirmadas para reentrenar (confirmá/corregí alertas en el Centro de Alertas).</div>`;
+    }
+  }catch(e){ el.innerHTML = '<span style="color:var(--m)">No se pudo cargar.</span>'; }
+}
+
+async function iniciarReentrenamiento(){
+  const btn = document.getElementById('rt-btn');
+  const errEl = document.getElementById('rt-error');
+  const resEl = document.getElementById('rt-resultado');
+  errEl.style.display = 'none'; resEl.style.display = 'none';
+  btn.disabled = true;
+  try{
+    const r = await fetch(`${URL_BASE_API}/api/modelos/reentrenar`, {credentials:'include',method:'POST',
+      headers:{'Content-Type':'application/json'}, body: JSON.stringify({})});
+    const d = await r.json();
+    if(!d.ok){ errEl.textContent = d.mensaje; errEl.style.display = 'block'; btn.disabled = false; return; }
+    document.getElementById('rt-progreso').style.display = 'block';
+    pollReentrenamiento();
+  }catch(e){
+    errEl.textContent = 'Error de conexión: ' + e.message; errEl.style.display = 'block'; btn.disabled = false;
+  }
+}
+
+function pollReentrenamiento(){
+  const timer = setInterval(async () => {
+    try{
+      const r = await fetch(`${URL_BASE_API}/api/modelos/reentrenar/estado`, {credentials:'include'});
+      const d = await r.json();
+      const barra = document.getElementById('rt-barra');
+      const paso = document.getElementById('rt-paso');
+      const pct = document.getElementById('rt-pct');
+      if(barra) barra.style.width = (d.progreso.porcentaje || 0) + '%';
+      if(paso) paso.textContent = d.progreso.paso || '';
+      if(pct) pct.textContent = (d.progreso.porcentaje || 0) + '%';
+
+      if(!d.activo){
+        clearInterval(timer);
+        document.getElementById('rt-btn').disabled = false;
+        if(d.error){
+          const errEl = document.getElementById('rt-error');
+          errEl.textContent = 'Error durante el reentrenamiento: ' + d.error;
+          errEl.style.display = 'block';
+        } else if(d.resultado){
+          const resEl = document.getElementById('rt-resultado');
+          const m = d.resultado;
+          resEl.innerHTML = `✅ Modelo reentrenado con ${m.n_muestras_reales} muestras reales +
+            ${m.n_muestras_base} de la base NSL-KDD.<br>
+            MLP → Recall: ${(m.metricas_mlp.recall*100).toFixed(1)}% ·
+            F1: ${(m.metricas_mlp.f1_score*100).toFixed(1)}%<br>
+            RNN → Recall: ${(m.metricas_rnn.recall*100).toFixed(1)}% ·
+            F1: ${(m.metricas_rnn.f1_score*100).toFixed(1)}%`;
+          resEl.style.display = 'block';
+          cargarStatsReentrenamiento();
+        }
+      }
+    }catch(e){ /* reintenta en el próximo ciclo */ }
+  }, 2000);
+}
+
+function actualizarEstadoRR(){
+  fetch(`${URL_BASE_API}/api/monitoreo/estado?desde=0`, {credentials:'include'}).then(r=>r.json()).then(d=>{
+    const btn = document.getElementById('rr-btn');
+    const dot = document.getElementById('rr-estado-dot');
+    const estadoEl = document.getElementById('rr-estado');
+    const ifaceEl = document.getElementById('rr-iface-actual');
+    if(!btn) return; // el usuario ya cambió de pestaña
+
+    if(d.activa){
+      dot.style.background = '#00ff88';
+      estadoEl.textContent = 'Monitoreando en vivo';
+      estadoEl.style.color = '#00ff88';
+      btn.textContent = '⏸ Detener monitoreo';
+      if(ifaceEl && d.iface) ifaceEl.textContent = `· interfaz: ${d.iface}`;
+    } else {
+      dot.style.background = '#5a7a9a';
+      estadoEl.textContent = 'Monitoreo detenido';
+      estadoEl.style.color = 'var(--m)';
+      btn.textContent = '▶ Iniciar monitoreo';
+      if(ifaceEl) ifaceEl.textContent = '';
+      if(d.error){
+        const errEl = document.getElementById('rr-error');
+        if(errEl){ errEl.textContent = d.error; errEl.style.display = 'block'; }
+      }
+    }
+  }).catch(()=>{});
+}
+
+async function alternarMonitoreoRR(){
+  const btn = document.getElementById('rr-btn');
+  const errEl = document.getElementById('rr-error');
+  errEl.style.display = 'none';
+  btn.disabled = true;
+
+  const estaActivo = btn.textContent.includes('Detener');
+  try{
+    if(estaActivo){
+      btn.textContent = '⏳ Deteniendo...';
+      await fetch(`${URL_BASE_API}/api/monitoreo/detener`, {credentials:'include',method:'POST'});
+    }else{
+      btn.textContent = '⏳ Iniciando...';
+      const iface = document.getElementById('rr-iface').value.trim();
+      const ventana = parseInt(document.getElementById('rr-ventana').value, 10);
+      const r = await fetch(`${URL_BASE_API}/api/monitoreo/iniciar`, {credentials:'include',
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({iface: iface || null, ventana})
+      });
+      const d = await r.json();
+      if(!d.ok){
+        errEl.textContent = d.mensaje || 'No se pudo iniciar el monitoreo.';
+        errEl.style.display = 'block';
+      }
+      rrIndice = 0; rrNormales = 0; rrRevisar = 0;
+      document.getElementById('rr-eventos').innerHTML = '';
+      document.getElementById('rr-total').textContent = '0';
+      document.getElementById('rr-normales').textContent = '0';
+      document.getElementById('rr-revisar').textContent = '0';
+    }
+  }catch(e){
+    errEl.textContent = 'Error de conexión: ' + e.message;
+    errEl.style.display = 'block';
+  }
+  setTimeout(() => { btn.disabled = false; actualizarEstadoRR(); }, 800);
+}
+
+function tRec(){
+  const esAdmin = ROL_USUARIO === 'Administrador';
+  return`
+<div class="panel" style="margin-bottom:14px">
+  <div class="ph"><span class="pt">⚙️ CONEXIÓN CON LA IA (Google Gemini)</span></div>
+  ${esAdmin ? `
+  <div id="rec-config-estado" style="font-size:.82rem;color:var(--m)">Verificando configuración...</div>
+  <div id="rec-config-form" style="display:none;margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+    <input type="password" id="rec-apikey" placeholder="AIzaSy..." style="flex:1;min-width:220px;
+      padding:8px 12px;background:var(--s2);border:1px solid var(--b);border-radius:7px;
+      color:var(--t);font-family:'Share Tech Mono',monospace;font-size:.8rem">
+    <button class="btn-an" onclick="guardarApiKeyIA()">Guardar</button>
+  </div>
+  <div id="rec-config-msg" style="display:none;margin-top:8px;font-size:.75rem"></div>
+  <p style="font-size:.72rem;color:var(--m);margin-top:8px">
+    Usa el nivel gratuito de la API de
+    <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--a)">Google Gemini</a>
+    (sin tarjeta de crédito, con límite de solicitudes por minuto/día). Nota: en el nivel gratuito,
+    Google puede usar estos prompts para mejorar sus modelos. La key se guarda solo en este servidor,
+    a nivel de sistema — no es una configuración por usuario.
+  </p>` : `
+  <div id="rec-config-estado" style="font-size:.82rem;color:var(--m)">
+    La conexión con la IA es una configuración a nivel de sistema, gestionada por un Administrador.
+  </div>`}
+</div>
+<div class="panel">
+  <div class="ph"><span class="pt">✨ PLANES DE RESPUESTA CON IA</span>
+    <span class="pb bai">🤖 Google Gemini</span></div>
+  <p style="font-size:.82rem;color:var(--m);margin-bottom:14px">
+    Selecciona un tipo de ataque y la IA genera un plan de respuesta detallado basado en NIST SP 800-61r2,
+    considerando las alertas reales más recientes del sistema.</p>
+  <div class="tbtns">
+    <button class="tbtn t-d" onclick="genRec('DoS')">⚡ Plan Anti-DoS</button>
+    <button class="tbtn t-pr" onclick="genRec('Probe')">🔭 Plan Anti-Probe</button>
+    <button class="tbtn t-r" onclick="genRec('R2L')">🔑 Plan Anti-R2L</button>
+    <button class="tbtn t-u" onclick="genRec('U2R')">☠️ Plan Anti-U2R</button>
+  </div>
+  <div id="rec-p" style="margin-top:14px">
+    <div style="color:var(--m);font-size:.82rem;text-align:center;padding:20px">
+      Selecciona un tipo de ataque para generar el plan</div>
+  </div>
+</div>`;}
+
+async function initRec(){
+  if(ROL_USUARIO !== 'Administrador') return; // el mensaje fijo ya está en tRec()
+  try{
+    const r = await fetch(`${URL_BASE_API}/api/ia/config/estado`, {credentials:'include'});
+    const d = await r.json();
+    const estadoEl = document.getElementById('rec-config-estado');
+    const formEl = document.getElementById('rec-config-form');
+    if(!estadoEl || !formEl) return;
+    if(d.configurada){
+      estadoEl.innerHTML = '✅ IA conectada. Los planes se generan en tiempo real con Gemini.';
+      estadoEl.style.color = '#00ff88';
+      formEl.style.display = 'none';
+    } else {
+      estadoEl.innerHTML = '⚠️ IA no configurada todavía. Los planes se muestran de una plantilla de referencia hasta que agregues tu API key.';
+      estadoEl.style.color = '#ffaa00';
+      formEl.style.display = 'flex';
+    }
+  }catch(e){}
+}
+
+async function guardarApiKeyIA(){
+  const input = document.getElementById('rec-apikey');
+  const msgEl = document.getElementById('rec-config-msg');
+  const key = input.value.trim();
+  msgEl.style.display = 'none';
+  try{
+    const r = await fetch(`${URL_BASE_API}/api/ia/config`, {credentials:'include',
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({api_key: key})
+    });
+    const d = await r.json();
+    if(r.ok && d.ok){
+      msgEl.textContent = '✅ API key guardada correctamente.';
+      msgEl.style.color = '#00ff88';
+      msgEl.style.display = 'block';
+      input.value = '';
+      setTimeout(initRec, 1000);
+    } else {
+      msgEl.textContent = d.detail || 'No se pudo guardar la API key.';
+      msgEl.style.color = '#ff8888';
+      msgEl.style.display = 'block';
+    }
+  }catch(e){
+    msgEl.textContent = 'Error de conexión: ' + e.message;
+    msgEl.style.color = '#ff8888';
+    msgEl.style.display = 'block';
+  }
+}
+
+function tUsuarios(){return`
+<div class="panel" style="margin-bottom:14px">
+  <div class="ph"><span class="pt">📧 CONFIGURACIÓN DE CORREO (Gmail)</span></div>
+  <div id="us-email-estado" style="font-size:.82rem;color:var(--m)">Verificando...</div>
+  <div id="us-email-form" style="display:none;margin-top:10px">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      <input type="email" id="us-gmail-user" placeholder="tucorreo@gmail.com" style="flex:1;min-width:200px;
+        padding:8px 12px;background:var(--s2);border:1px solid var(--b);border-radius:7px;
+        color:var(--t);font-size:.8rem">
+      <input type="password" id="us-gmail-pass" placeholder="contraseña de aplicación (16 caracteres)"
+        style="flex:1;min-width:200px;padding:8px 12px;background:var(--s2);border:1px solid var(--b);
+        border-radius:7px;color:var(--t);font-family:'Share Tech Mono',monospace;font-size:.8rem">
+      <button class="btn-an" onclick="guardarConfigEmail()">Guardar</button>
+    </div>
+    <div id="us-email-msg" style="display:none;font-size:.75rem"></div>
+    <p style="font-size:.72rem;color:var(--m)">
+      Generá una contraseña de aplicación en
+      <a href="https://myaccount.google.com/apppasswords" target="_blank" style="color:var(--a)">
+        myaccount.google.com/apppasswords</a> (requiere verificación en 2 pasos activada en esa cuenta).
+      No es tu contraseña normal de Gmail.
+    </p>
+  </div>
+</div>
+
+<div class="panel" style="margin-bottom:14px">
+  <div class="ph"><span class="pt">➕ INVITAR USUARIO</span></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+    <div style="flex:1;min-width:180px">
+      <label style="display:block;font-size:.7rem;color:var(--m);margin-bottom:4px">CORREO REAL</label>
+      <input type="email" id="us-inv-email" placeholder="persona@empresa.com" style="width:100%;
+        padding:8px 12px;background:var(--s2);border:1px solid var(--b);border-radius:7px;
+        color:var(--t);font-size:.85rem">
+    </div>
+    <div style="flex:1;min-width:150px">
+      <label style="display:block;font-size:.7rem;color:var(--m);margin-bottom:4px">NOMBRE</label>
+      <input type="text" id="us-inv-nombre" placeholder="Nombre completo" style="width:100%;
+        padding:8px 12px;background:var(--s2);border:1px solid var(--b);border-radius:7px;
+        color:var(--t);font-size:.85rem">
+    </div>
+    <div>
+      <label style="display:block;font-size:.7rem;color:var(--m);margin-bottom:4px">ROL</label>
+      <select id="us-inv-rol" style="padding:8px 12px;background:var(--s2);border:1px solid var(--b);
+        border-radius:7px;color:var(--t);font-size:.85rem">
+        <option value="Analista SOC">Analista SOC</option>
+        <option value="Administrador">Administrador</option>
+      </select>
+    </div>
+    <button class="btn-an" onclick="invitarUsuario()">Enviar invitación</button>
+  </div>
+  <div id="us-inv-msg" style="display:none;margin-top:10px;font-size:.78rem;padding:8px 12px;
+    border-radius:7px"></div>
+</div>
+
+<div class="panel">
+  <div class="ph"><span class="pt">👥 USUARIOS DEL SISTEMA</span></div>
+  <div id="us-lista" style="display:flex;flex-direction:column;gap:8px">
+    <div style="text-align:center;padding:20px;color:var(--m);font-size:.82rem">Cargando...</div>
+  </div>
+</div>`;}
+
+async function initUsuarios(){
+  if(ROL_USUARIO !== 'Administrador'){
+    document.getElementById('cnt').innerHTML = `<div class="panel" style="text-align:center;padding:30px">
+      <p style="color:var(--m)">Esta sección es solo para Administradores.</p></div>`;
+    return;
+  }
+  cargarEstadoEmail();
+  cargarUsuarios();
+}
+
+async function cargarEstadoEmail(){
+  try{
+    const r = await fetch(`${URL_BASE_API}/api/usuarios/configuracion/correo/estado`, {credentials:'include'});
+    const d = await r.json();
+    const estadoEl = document.getElementById('us-email-estado');
+    const formEl = document.getElementById('us-email-form');
+    if(d.configurado){
+      estadoEl.innerHTML = '✅ Correo configurado. Las invitaciones se envían por Gmail.';
+      estadoEl.style.color = '#00ff88';
+    } else {
+      estadoEl.innerHTML = '⚠️ Correo no configurado. Las invitaciones generan un link para compartir manualmente.';
+      estadoEl.style.color = '#ffaa00';
+    }
+    formEl.style.display = 'block';
+  }catch(e){}
+}
+
+async function guardarConfigEmail(){
+  const gmail_user = document.getElementById('us-gmail-user').value.trim();
+  const gmail_app_password = document.getElementById('us-gmail-pass').value.trim();
+  const msgEl = document.getElementById('us-email-msg');
+  msgEl.style.display = 'none';
+  try{
+    const r = await fetch(`${URL_BASE_API}/api/usuarios/configuracion/correo`, {credentials:'include',
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({gmail_user, gmail_app_password})
+    });
+    const d = await r.json();
+    msgEl.style.display = 'block';
+    if(r.ok && d.ok){
+      msgEl.textContent = '✅ Configuración guardada.'; msgEl.style.color = '#00ff88';
+      cargarEstadoEmail();
+    } else {
+      msgEl.textContent = d.detail || 'Error al guardar.'; msgEl.style.color = '#ff8888';
+    }
+  }catch(e){
+    msgEl.textContent = 'Error de conexión: ' + e.message; msgEl.style.color = '#ff8888';
+    msgEl.style.display = 'block';
+  }
+}
+
+async function invitarUsuario(){
+  const email = document.getElementById('us-inv-email').value.trim();
+  const nombre = document.getElementById('us-inv-nombre').value.trim();
+  const rol = document.getElementById('us-inv-rol').value;
+  const msgEl = document.getElementById('us-inv-msg');
+  msgEl.style.display = 'none';
+  if(!email || !nombre){
+    msgEl.textContent = 'Completá correo y nombre.'; msgEl.style.color = '#ff8888';
+    msgEl.style.background = '#1a0505'; msgEl.style.display = 'block';
+    return;
+  }
+  try{
+    const r = await fetch(`${URL_BASE_API}/api/usuarios/invitar`, {credentials:'include',
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({email, nombre, rol})
+    });
+    const d = await r.json();
+    msgEl.style.display = 'block';
+    if(r.ok && d.ok){
+      msgEl.textContent = '✅ ' + d.mensaje;
+      msgEl.style.color = '#00ff88'; msgEl.style.background = '#051a0a';
+      document.getElementById('us-inv-email').value = '';
+      document.getElementById('us-inv-nombre').value = '';
+      cargarUsuarios();
+    } else {
+      msgEl.textContent = d.detail || 'No se pudo invitar al usuario.';
+      msgEl.style.color = '#ff8888'; msgEl.style.background = '#1a0505';
+    }
+  }catch(e){
+    msgEl.textContent = 'Error de conexión: ' + e.message;
+    msgEl.style.color = '#ff8888'; msgEl.style.background = '#1a0505'; msgEl.style.display = 'block';
+  }
+}
+
+async function cargarUsuarios(){
+  const cont = document.getElementById('us-lista');
+  try{
+    const r = await fetch(`${URL_BASE_API}/api/usuarios`, {credentials:'include'});
+    const usuarios = await r.json();
+    if(!usuarios.length){
+      cont.innerHTML = '<div style="text-align:center;padding:20px;color:var(--m);font-size:.82rem">No hay usuarios todavía.</div>';
+      return;
+    }
+    cont.innerHTML = usuarios.map(u => `
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--s2);
+        border:1px solid var(--b);border-radius:8px;flex-wrap:wrap">
+        <div style="width:36px;height:36px;border-radius:50%;background:#0062cc22;color:var(--a);
+          display:flex;align-items:center;justify-content:center;font-weight:bold">${u.nombre[0].toUpperCase()}</div>
+        <div style="flex:1;min-width:160px">
+          <div style="color:var(--t);font-size:.85rem">${u.nombre}</div>
+          <div style="color:var(--m);font-size:.72rem">${u.email}</div>
+        </div>
+        <select onchange="cambiarRol(${u.id}, this.value)" style="padding:6px 10px;background:var(--s1);
+          border:1px solid var(--b);border-radius:6px;color:var(--t);font-size:.78rem">
+          <option value="Analista SOC" ${u.rol==='Analista SOC'?'selected':''}>Analista SOC</option>
+          <option value="Administrador" ${u.rol==='Administrador'?'selected':''}>Administrador</option>
+        </select>
+        <span style="font-size:.72rem;padding:4px 10px;border-radius:12px;
+          background:${u.activo?'#00ff8822':'#ffaa0022'};color:${u.activo?'#00ff88':'#ffaa00'}">
+          ${u.activo?'● Activo':'○ Pendiente de activar'}
+        </span>
+        <button onclick="toggleEstado(${u.id}, ${!u.activo})" style="background:none;border:1px solid var(--b);
+          color:var(--m);padding:5px 10px;border-radius:6px;font-size:.72rem;cursor:pointer">
+          ${u.activo?'Desactivar':'Reactivar'}
+        </button>
+        ${u.activo ? `
+        <button onclick="resetearMFA(${u.id}, '${u.nombre.replace(/'/g,"")}')" style="background:none;border:1px solid #aa66ff44;
+          color:#aa66ff;padding:5px 10px;border-radius:6px;font-size:.72rem;cursor:pointer">
+          📱 Resetear MFA
+        </button>` : ''}
+        <button onclick="eliminarUsuario(${u.id}, '${u.nombre.replace(/'/g,"")}')" style="background:none;border:1px solid #ff444444;
+          color:#ff6666;padding:5px 10px;border-radius:6px;font-size:.72rem;cursor:pointer">
+          Eliminar
+        </button>
+      </div>
+    `).join('');
+  }catch(e){
+    cont.innerHTML = '<div style="text-align:center;padding:20px;color:#ff8888;font-size:.82rem">Error al cargar usuarios.</div>';
+  }
+}
+
+async function cambiarRol(id, rol){
+  await fetch(`${URL_BASE_API}/api/usuarios/${id}/rol`, {credentials:'include',method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({rol})});
+  cargarUsuarios();
+}
+
+async function toggleEstado(id, activo){
+  await fetch(`${URL_BASE_API}/api/usuarios/${id}/estado`, {credentials:'include',method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({activo})});
+  cargarUsuarios();
+}
+
+async function eliminarUsuario(id, nombre){
+  if(!confirm(`¿Eliminar a ${nombre} del sistema? Esta acción no se puede deshacer.`)) return;
+  await fetch(`${URL_BASE_API}/api/usuarios/${id}`, {credentials:'include',method:'DELETE'});
+  cargarUsuarios();
+}
+
+async function resetearMFA(id, nombre){
+  if(!confirm(`¿Resetear el MFA de ${nombre}? Su código actual dejará de funcionar de inmediato y va a necesitar reconfigurar uno nuevo (por ejemplo, porque perdió el teléfono).`)) return;
+  try{
+    const r = await fetch(`${URL_BASE_API}/api/usuarios/${id}/resetear-mfa`, {credentials:'include',method:'POST'});
+    const d = await r.json();
+    alert(d.mensaje || (r.ok ? 'MFA reseteado.' : 'No se pudo resetear el MFA.'));
+    cargarUsuarios();
+  }catch(e){
+    alert('Error de conexión: ' + e.message);
+  }
+}
+
+function tExp(){return`
+<div class="panel" style="margin-bottom:14px">
+  <div class="ph"><span class="pt">🔬 RESULTADOS EXPERIMENTALES – CAPÍTULO 4</span></div>
+  <p style="font-size:.8rem;color:var(--m);margin-bottom:14px">
+    Comparación MLP/RNN (Deep Learning) vs. Random Forest, SVM, KNN (Métodos Tradicionales) · Dataset NSL-KDD</p>
+  <div id="tbl-exp" style="overflow-x:auto"></div>
+</div>
+<div class="g2">
+  <div class="panel">
+    <div class="ph"><span class="pt">📊 RECALL POR MODELO</span></div>
+    <canvas id="cRecall" height="220"></canvas>
+  </div>
+  <div class="panel">
+    <div class="ph"><span class="pt">⏱️ TIEMPO DE ENTRENAMIENTO</span></div>
+    <canvas id="cTiempo" height="220"></canvas>
+  </div>
+</div>`;}
+
+// ── Análisis ───────────────────────────────────────────────────────────────
+async function analizar(tipo){
+  const rb=document.getElementById('rb');
+  if(rb){rb.className='rb';rb.innerHTML='<span style="color:var(--m)">⏳ Analizando...</span>'}
+  try{
+    const r=await fetch(`${URL_BASE_API}/api/analizador/${tipo}`,{credentials:'include',method:'POST'});
+    const d=await r.json();
+    if(d.error){if(rb)rb.innerHTML='❌ '+d.error;return}
+    d._fuente = 'simulacion'; // prueba manual: no cuenta como tráfico real de producción
+    if(d.alerta_generada)addAlerta(d);addLog(d);
+    if(rb)mostrarRes(rb,d);updDashAl();
+    if(d.clase!=='NORMAL'){const p=document.getElementById('ia-p');if(p)showIA(p,d);}
+  }catch(e){if(rb)rb.innerHTML='❌ Error: '+e.message}
+}
+
+function mostrarRes(rb,d){
+  const ico={NORMAL:'✅',CRÍTICO:'🔴',ADVERTENCIA:'🟡',INFORMACIÓN:'🔵'};
+  const css={CRÍTICO:'rc',ADVERTENCIA:'ra',NORMAL:'rn',INFORMACIÓN:'rn'};
+  rb.className='rb '+(css[d.severidad]||'');
+  const probs=Object.entries(d.probabilidades||{}).sort((a,b)=>b[1]-a[1])
+    .map(([k,v])=>{const c=COL[k]||'#888',p=Math.round(v);
+      return`<div style="margin-bottom:3px">
+        <div style="display:flex;justify-content:space-between;font-size:.7rem;margin-bottom:2px">
+          <span style="color:${c}">${k}</span><span style="color:var(--m)">${p}%</span></div>
+        <div style="background:#0a1825;border-radius:3px;height:4px">
+          <div style="width:${p}%;height:4px;border-radius:3px;background:${c};transition:width .5s"></div>
+        </div></div>`}).join('');
+  const feats=(d.features_influyentes||[]).map(f=>
+    `<div style="display:flex;gap:7px;padding:5px;border-radius:5px;
+      background:rgba(0,0,0,.2);margin-bottom:3px">
+      <span style="color:var(--y);font-size:.78rem">⚠</span>
+      <div style="font-size:.75rem"><b style="color:var(--t)">${f.feature}</b>:
+        <span style="color:#ff8844">${f.valor}</span>
+        <span style="color:var(--m)">(normal:${f.normal})</span></div>
+    </div>`).join('');
+  rb.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+      <div><span style="font-size:1.3rem">${ico[d.severidad]||'🔵'}</span>
+        <span style="font-size:1.05rem;font-weight:700;margin-left:7px">${d.clase}</span>
+        <span class="cb c${d.severidad[0]}" style="margin-left:7px;padding:3px 9px;
+          border-radius:10px;font-size:.68rem">${d.severidad}</span></div>
+      <div style="text-align:right">
+        <div style="font-size:1.5rem;font-weight:700;color:var(--a)">${d.confianza}%</div>
+        <div style="font-size:.62rem;color:var(--m);font-family:'Share Tech Mono',monospace">CONFIANZA</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <div>${probs}</div>
+      <div>${feats||'<div style="color:var(--m);font-size:.75rem;text-align:center;padding:8px">Sin anomalías</div>'}
+        <div style="margin-top:7px;font-size:.65rem;color:var(--m);font-family:'Share Tech Mono',monospace">
+          MLP: ${d.mlp?.clase} (${d.mlp?.confianza}%)<br>
+          RNN: ${d.rnn?.clase||'n/a'} (${d.rnn?.confianza||0}%)</div>
+      </div>
+    </div>
+    ${d.alerta?`<div style="padding:9px;background:rgba(255,68,68,.05);
+      border:1px solid #ff444422;border-radius:7px;font-size:.75rem">
+      <b style="color:#ff4444">🚨</b> ${d.alerta.descripcion}<br>
+      <span style="color:var(--m)">→ ${(d.alerta.acciones_recomendadas||[]).slice(0,2).join(' · ')}</span>
+    </div>`:''}`;
+}
+
+// ── Monitoreo de Red Real (continuo) ────────────────────────────────────────
+function iniciarPollingRR(){
+  if(rrPolling) return;
+  rrPolling = true;
+
+  rrTimer = setInterval(async () => {
+    try{
+      const r = await fetch(`${URL_BASE_API}/api/monitoreo/estado?desde=${rrIndice}`, {credentials:'include'});
+      const d = await r.json();
+
+      const warnEl = document.getElementById('rr-warn');
+      if(warnEl){
+        const prog = d.progreso || {};
+        if(prog.flujos_omitidos > 0){
+          warnEl.textContent = `ℹ ${prog.flujos_omitidos} conexión(es) no se pudieron clasificar y se omitieron automáticamente.`;
+          warnEl.style.display = 'block';
+        } else {
+          warnEl.style.display = 'none';
+        }
+      }
+
+      // Nuevos resultados: se inyectan en el MISMO flujo que analizar(),
+      // así las tarjetas KPI, gráficas y centro de alertas ya construidos
+      // se actualizan automáticamente, sin duplicar lógica de frontend.
+      if(d.nuevos && d.nuevos.length){
+        d.nuevos.forEach(res => {
+          updCnt(res);
+          if(res.alerta_generada) addAlerta(res);
+          addLog(res);
+          addDot(res);
+          updDashAl();
+          updCharts(res);
+
+          const nivel = clasificarNivel(res);
+          if(nivel.nivel === 'normal') rrNormales++; else rrRevisar++;
+
+          mostrarResRR(res, nivel);
+          agregarEventoRR(res, nivel);
+        });
+        rrIndice += d.nuevos.length;
+        const totalEl = document.getElementById('rr-total');
+        const normEl = document.getElementById('rr-normales');
+        const revEl = document.getElementById('rr-revisar');
+        if(totalEl) totalEl.textContent = rrIndice;
+        if(normEl) normEl.textContent = rrNormales;
+        if(revEl) revEl.textContent = rrRevisar;
+      }
+
+      // El estado (activo/inactivo/interfaz) se refleja solo si la pantalla
+      // 'Red Real' está abierta; si el usuario está en otra pestaña, el
+      // polling sigue igual actualizando KPIs globales del dashboard.
+      if(document.getElementById('rr-btn')) actualizarEstadoRR();
+    }catch(e){ /* red momentáneamente no disponible, sigue intentando */ }
+  }, 1500);
+}
+
+// Tarjeta principal: lenguaje simple, semáforo, detalle técnico plegable
+// (MLP/RNN/probabilidades) para cuando alguien quiera profundizar.
+function mostrarResRR(d, nivel){
+  const rb = document.getElementById('rr-resultado');
+  if(!rb) return;
+  const destino = describirDestino(d._flujo);
+  const idDetalle = 'rr-det-' + Date.now();
+  const dispositivo = d._dispositivo || 'Dispositivo no identificado';
+  const rep = d._reputacion || {nivel:'nuevo', texto:'Sin historial'};
+  const repInfo = {
+    confiable:  {icono:'✅', color:'#00ff88', texto:'Destino confiable'},
+    revisar:    {icono:'⚠️', color:'#ffaa00', texto:'Confiabilidad mixta'},
+    no_confiable:{icono:'🚫', color:'#ff4444', texto:'Destino poco confiable'},
+    nuevo:      {icono:'🆕', color:'#4a6a8a', texto:'Primera vez / poco historial'},
+  }[rep.nivel];
+
+  rb.innerHTML = `
+  <div style="padding:4px 4px 14px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+      <div style="font-size:2rem;line-height:1">${nivel.icono}</div>
+      <div>
+        <div style="font-size:1.05rem;font-weight:700;color:${nivel.color}">${nivel.texto}</div>
+        <div style="font-size:.72rem;color:var(--m)">Confianza del sistema: ${d.confianza}%</div>
+      </div>
+    </div>
+    <div style="background:var(--s2);border:1px solid var(--b);border-radius:9px;padding:12px 14px;font-size:.85rem;color:var(--t);line-height:1.5;margin-bottom:10px">
+      Conexión hacia <b>${destino}</b>.<br>
+      ${nivel.nivel==='normal'
+        ? 'No se detectaron patrones asociados a un ataque.'
+        : nivel.nivel==='revisar'
+        ? 'El patrón de esta conexión se parece parcialmente a tráfico anómalo. Vale la pena revisarla si se repite.'
+        : 'Este patrón coincide fuertemente con un comportamiento de ataque conocido. Requiere atención.'}
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+      <div style="flex:1;min-width:150px;background:var(--s2);border:1px solid var(--b);border-radius:8px;padding:8px 10px">
+        <div style="font-size:.65rem;color:var(--m);margin-bottom:2px">DISPOSITIVO DE ORIGEN</div>
+        <div style="font-size:.78rem;color:var(--t)">📟 ${dispositivo}</div>
+      </div>
+      <div style="flex:1;min-width:150px;background:var(--s2);border:1px solid var(--b);border-radius:8px;padding:8px 10px">
+        <div style="font-size:.65rem;color:var(--m);margin-bottom:2px">CONFIABILIDAD DEL DESTINO</div>
+        <div style="font-size:.78rem;color:${repInfo.color}">${repInfo.icono} ${repInfo.texto}</div>
+        <div style="font-size:.65rem;color:var(--m)">${rep.texto}</div>
+      </div>
+    </div>
+    <button onclick="const e=document.getElementById('${idDetalle}');e.style.display=e.style.display==='none'?'block':'none';"
+      style="background:none;border:none;color:var(--a);font-size:.72rem;cursor:pointer;padding:0;text-decoration:underline">
+      Ver detalle técnico
+    </button>
+    <div id="${idDetalle}" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--b);
+      font-size:.72rem;color:var(--m)">
+      <div>Clasificación del modelo: <b style="color:var(--t)">${d.clase}</b> · Severidad interna: <b style="color:var(--t)">${d.severidad}</b></div>
+      <div style="margin-top:4px">Red neuronal MLP: <b style="color:var(--t)">${d.mlp ? d.mlp.clase+' ('+d.mlp.confianza+'%)' : '—'}</b></div>
+      <div>Red neuronal RNN: <b style="color:var(--t)">${d.rnn ? d.rnn.clase+' ('+d.rnn.confianza+'%)' : '—'}</b></div>
+    </div>
+  </div>`;
+}
+
+// Lista de "Actividad reciente": tarjetas cortas en lenguaje humano,
+// la más nueva arriba, máximo 20 visibles para no saturar.
+function agregarEventoRR(d, nivel){
+  const cont = document.getElementById('rr-eventos');
+  if(!cont) return;
+  if(cont.children.length === 1 && cont.children[0].dataset && cont.children[0].dataset.vacio)
+    cont.innerHTML = '';
+
+  const ts = new Date().toLocaleTimeString('es-EC', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const destino = describirDestino(d._flujo);
+  const dispositivo = d._dispositivo && !d._dispositivo.includes('no identificado') && !d._dispositivo.includes('genérico')
+    ? ` · ${d._dispositivo}` : '';
+
+  // Si la MISMA conexión (mismo destino) se repite justo antes, no se
+  // agrega una línea nueva idéntica: se actualiza un contador en la
+  // existente. Esto evita el ruido de ver 5 líneas iguales seguidas.
+  const primero = cont.firstElementChild;
+  if(primero && primero.dataset.destino === destino){
+    let contador = parseInt(primero.dataset.contador || '1', 10) + 1;
+    primero.dataset.contador = contador;
+    primero.querySelector('.rr-ev-ts').textContent = `${ts} · ${nivel.texto} · ${contador} veces`;
+    return;
+  }
+
+  const div = document.createElement('div');
+  div.dataset.destino = destino;
+  div.dataset.contador = '1';
+  div.style.cssText = `display:flex;align-items:center;gap:10px;padding:8px 10px;
+    background:var(--s2);border:1px solid var(--b);border-left:3px solid ${nivel.color};
+    border-radius:6px;font-size:.76rem`;
+  div.innerHTML = `
+    <span style="font-size:1rem">${nivel.icono}</span>
+    <div style="flex:1;min-width:0">
+      <div style="color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${destino}${dispositivo}</div>
+      <div class="rr-ev-ts" style="color:var(--m);font-size:.68rem">${ts} · ${nivel.texto}</div>
+    </div>`;
+  cont.insertBefore(div, cont.firstChild);
+  while(cont.children.length > 20) cont.removeChild(cont.lastChild);
+}
+
+
+async function showIA(panel,d){
+  panel.innerHTML=`<div class="ia-box"><div class="ia-th">🤖 IA analizando...
+    <div class="ia-dots"><span></span><span></span><span></span></div></div></div>`;
+  const r=await fetch(`${URL_BASE_API}/api/ia/recomendaciones`, {credentials:'include',method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({clase:d.clase,severidad:d.severidad,
+      confianza:d.confianza,features:d.features_influyentes||[]})});
+  const rec=await r.json();
+  panel.innerHTML=renderRec(d.clase,rec);
+}
+
+async function genRec(tipo){
+  const p=document.getElementById('rec-p');
+  p.innerHTML=`<div class="ia-box"><div class="ia-th">🤖 Generando plan para ${tipo}...
+    <div class="ia-dots"><span></span><span></span><span></span></div></div></div>`;
+  const r=await fetch(`${URL_BASE_API}/api/ia/recomendaciones`, {credentials:'include',method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({clase:tipo,severidad:'CRÍTICO',confianza:95,features:[]})});
+  const rec=await r.json();
+  p.innerHTML=renderRec(tipo,rec);
+}
+
+function renderRec(clase,rec){
+  const meta = rec._ia_meta || {modo:'fallback'};
+  const footerIA = meta.modo === 'ia'
+    ? `<div style="margin-top:6px;font-size:.68rem;color:#00ff88">
+         🤖 Generado en tiempo real por Google Gemini (${meta.modelo}) · ${meta.tokens_entrada}+${meta.tokens_salida} tokens
+       </div>`
+    : `<div style="margin-top:6px;font-size:.68rem;color:#ffaa00">
+         📋 Plan de referencia (plantilla) — ${meta.motivo || 'la IA no está configurada'}.
+         <a href="#" onclick="pg('recomendaciones',document.getElementById('ni-recomendaciones'));return false"
+           style="color:var(--a)">Configurar IA</a>
+       </div>`;
+  return`<div class="ia-box">
+    <div style="display:flex;align-items:center;gap:7px;margin-bottom:12px">
+      <span>🤖</span>
+      <b style="color:var(--p);font-size:.85rem">PLAN DE RESPUESTA – ${clase}</b>
+      <span style="margin-left:auto;font-family:'Share Tech Mono',monospace;
+        font-size:.62rem;color:var(--m)">${rec.referencia_nist||''}</span>
+    </div>
+    ${rec.pasos.map((p,i)=>`<div class="ia-step">
+      <div class="ia-num">${i+1}</div>
+      <div class="ia-txt"><b style="color:var(--t)">${p.titulo}</b><br>
+        <span style="color:var(--m);font-size:.75rem">${p.detalle}</span></div>
+    </div>`).join('')}
+    <div style="margin-top:9px;padding:7px;border-radius:6px;
+      background:rgba(0,0,0,.25);font-size:.72rem;color:var(--m)">
+      ⏱️ <b style="color:var(--a)">${rec.tiempo_respuesta}</b> &nbsp;·&nbsp;
+      Prioridad: <b style="color:${rec.color_prioridad}">${rec.prioridad}</b>
+    </div>
+    ${footerIA}
+  </div>`;}
+
+// ── Gráficas Canvas ────────────────────────────────────────────────────────
+let dLine={DoS:[],Probe:[],R2L:[],U2R:[],NORMAL:[]};
+let dDon={DoS:0,Probe:0,R2L:0,U2R:0,NORMAL:0};
+const MAX=20;
+
+function initC(){setTimeout(()=>{drawLine();drawDon();},100)}
+
+function updCharts(d){
+  if(dLine[d.clase]!==undefined){
+    dLine[d.clase].push(d.confianza);
+    if(dLine[d.clase].length>MAX)dLine[d.clase].shift();
+  }
+  dDon[d.clase]=(dDon[d.clase]||0)+1;
+  if(pg_act==='dashboard'){drawLine();drawDon();}
+}
+
+function drawLine(){
+  const cv=document.getElementById('cLine');if(!cv)return;
+  const ctx=cv.getContext('2d');
+  cv.width=cv.offsetWidth||400;cv.height=150;
+  const W=cv.width,H=cv.height;
+  ctx.fillStyle='#111827';ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='#1e3a5f';ctx.lineWidth=1;
+  for(let y=H*.1;y<H;y+=H/5){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  Object.entries(dLine).forEach(([k,v])=>{
+    if(v.length<2)return;
+    ctx.beginPath();ctx.strokeStyle=COL[k]||'#888';ctx.lineWidth=2;
+    v.forEach((val,i)=>{
+      const x=(i/(MAX-1))*W,y=H-(val/100)*(H*.82)-H*.06;
+      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    });ctx.stroke();
+    if(v.length>0){
+      const x=((v.length-1)/(MAX-1))*W,y=H-(v[v.length-1]/100)*(H*.82)-H*.06;
+      ctx.beginPath();ctx.arc(x,y,3,0,Math.PI*2);
+      ctx.fillStyle=COL[k];ctx.fill();
+    }
+  });
+  let lx=6;
+  Object.entries(COL).forEach(([k,c])=>{
+    ctx.fillStyle=c;ctx.fillRect(lx,H-12,8,3);
+    ctx.fillStyle='#7a9ab5';ctx.font='8px Share Tech Mono,monospace';
+    ctx.fillText(k,lx+11,H-9);lx+=ctx.measureText(k).width+22;
+  });
+}
+
+function drawDon(){
+  const cv=document.getElementById('cDonut');if(!cv)return;
+  const ctx=cv.getContext('2d');
+  cv.width=cv.offsetWidth||300;cv.height=150;
+  const W=cv.width,H=cv.height;
+  ctx.fillStyle='#111827';ctx.fillRect(0,0,W,H);
+  const tot=Object.values(dDon).reduce((a,b)=>a+b,0);
+  if(!tot){
+    ctx.fillStyle='#1e3a5f';ctx.font='11px Rajdhani,sans-serif';
+    ctx.textAlign='center';ctx.fillText('Sin datos',W*.4,H/2);return;
+  }
+  const cx=W*.4,cy=H/2,r=H*.38,ri=H*.2;
+  let ang=-Math.PI/2;
+  Object.entries(dDon).forEach(([k,v])=>{
+    if(!v)return;const s=(v/tot)*Math.PI*2;
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,ang,ang+s);
+    ctx.closePath();ctx.fillStyle=COL[k]||'#888';ctx.fill();
+    ctx.strokeStyle='#111827';ctx.lineWidth=2;ctx.stroke();ang+=s;
+  });
+  ctx.beginPath();ctx.arc(cx,cy,ri,0,Math.PI*2);
+  ctx.fillStyle='#111827';ctx.fill();
+  ctx.fillStyle='#00d4ff';ctx.font='bold 15px Rajdhani,sans-serif';
+  ctx.textAlign='center';ctx.fillText(tot,cx,cy+2);
+  ctx.fillStyle='#4a6a8a';ctx.font='7px Share Tech Mono,monospace';
+  ctx.fillText('TOTAL',cx,cy+12);
+  let ly=12;ctx.textAlign='left';
+  Object.entries(dDon).forEach(([k,v])=>{
+    if(!v)return;
+    ctx.fillStyle=COL[k];ctx.fillRect(cx+r+10,ly,8,8);
+    ctx.fillStyle='#c8d8e8';ctx.font='9px Rajdhani,sans-serif';
+    ctx.fillText(k+' ('+v+')',cx+r+22,ly+7);ly+=16;
+  });
+}
+
+// ── Alertas ────────────────────────────────────────────────────────────────
+function alHTML(a,i){
+  const ico={CRÍTICO:'🔴',ADVERTENCIA:'🟡',INFORMACIÓN:'🔵',NORMAL:'✅'};
+  const ts=a.timestamp?new Date(a.timestamp).toLocaleTimeString('es-EC'):'';
+  const sc='s'+(a.severidad==='CRÍTICO'?'C':a.severidad==='ADVERTENCIA'?'A':
+    a.severidad==='NORMAL'?'N':'I');
+  const cc='c'+(a.severidad==='CRÍTICO'?'C':a.severidad==='ADVERTENCIA'?'A':'N');
+  const fuenteTag = a._fuente === 'red_real'
+    ? '<span style="font-size:.62rem;color:#00ff88;border:1px solid #00ff8844;border-radius:8px;padding:1px 6px">🌐 Red real</span>'
+    : '<span style="font-size:.62rem;color:#ffaa00;border:1px solid #ffaa0044;border-radius:8px;padding:1px 6px">🧪 Simulación</span>';
+
+  // Etiquetado humano real (solo tiene sentido para tráfico real, no para
+  // simulaciones que ya "sabemos" qué son): alimenta el reentrenamiento.
+  const etiquetaBtns = (a._fuente === 'red_real' && a._captura_id && !a._etiquetado)
+    ? `<span style="cursor:pointer;color:#00ff88" onclick="etiquetarDeteccion(${i},'${a.clase}')">✓ Confirmar</span>
+       <span style="cursor:pointer;color:#ff8888" onclick="etiquetarDeteccion(${i},'NORMAL')">✗ Falso positivo</span>`
+    : (a._etiquetado ? `<span style="color:#4a6a8a">✓ Etiquetado: ${a._etiquetado}</span>` : '');
+
+  return`<div class="al-item" id="al-${i}">
+    <div class="al-sev ${sc}"></div>
+    <div class="al-body">
+      <div class="al-title">${ico[a.severidad]||'🔵'} ${a.clase} – ${a.severidad} ${fuenteTag}</div>
+      <div class="al-desc">${a.alerta?.descripcion||'Amenaza detectada'}</div>
+      <div class="al-meta"><span>${ts}</span>
+        <span class="cb ${cc}">${a.confianza}%</span>
+        ${etiquetaBtns}
+      </div>
+    </div>
+  </div>`;}
+
+async function etiquetarDeteccion(i, etiqueta){
+  const a = alertas[i];
+  if(!a || !a._captura_id) return;
+  try{
+    await fetch(`${URL_BASE_API}/api/alertas/capturas/${a._captura_id}/etiquetar`, {credentials:'include',
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({etiqueta})
+    });
+    a._etiquetado = etiqueta;
+    updDashAl();
+    const listaEl = document.getElementById('lista-al');
+    if(listaEl) filtrar('todas');
+  }catch(e){ alert('No se pudo guardar la corrección: ' + e.message); }
+}
+
+function addAlerta(d){
+  alertas.unshift(d);if(alertas.length>50)alertas.pop();
+  document.getElementById('badge').textContent=alertas.length;
+  updDashAl();
+}
+
+function updDashAl(){
+  const el=document.getElementById('dash-al');if(!el)return;
+  el.innerHTML=alertas.length===0
+    ?'<div style="color:var(--m);text-align:center;padding:16px;font-size:.8rem">Sin alertas</div>'
+    :alertas.slice(0,5).map((a,i)=>alHTML(a,i)).join('');
+}
+
+function filtrar(niv){
+  const el=document.getElementById('lista-al');if(!el)return;
+  const f=niv==='todas'?alertas:alertas.filter(a=>a.severidad===niv);
+  el.innerHTML=f.length===0
+    ?'<div style="color:var(--m);text-align:center;padding:30px">Sin alertas de ese nivel</div>'
+    :f.map((a,i)=>alHTML(a,i)).join('');
+}
+
+// ── Contadores y log ───────────────────────────────────────────────────────
+function updCnt(d){
+  C.total++;
+  if(d.severidad==='CRÍTICO')C.criticas++;
+  if(d.severidad==='ADVERTENCIA')C.advertencias++;
+  if(d.clase==='NORMAL')C.normales++;
+  const ids=['kc','ka','kn','kt'],vals=[C.criticas,C.advertencias,C.normales,C.total];
+  ids.forEach((id,i)=>{const el=document.getElementById(id);if(el)el.textContent=vals[i]});
+}
+
+let logLineas = [];
+function addLog(d){
+  const log=document.getElementById('log');if(!log)return;
+  const ts=new Date().toLocaleTimeString('es-EC');
+  const col={NORMAL:'#00ff88',CRÍTICO:'#ff4444',ADVERTENCIA:'#ffaa00',INFORMACIÓN:'#00aaff'}[d.severidad]||'#7aff7a';
+  const icono = d._fuente === 'red_real' ? '🌐' : '🧪';
+  logLineas.push(`<span style="color:#2a4a6a">${ts}</span> ${icono} <span style="color:${col}">${d.clase}</span> — ${d.severidad} (${d.confianza}%)`);
+  // Tope de líneas: evita que el panel crezca sin límite en sesiones largas.
+  if(logLineas.length > 60) logLineas = logLineas.slice(-60);
+  log.innerHTML = logLineas.join('<br>');
+  log.scrollTop=log.scrollHeight;
+}
+
+function addDot(d){
+  const m=document.getElementById('tmap');if(!m||d.clase==='NORMAL')return;
+  const dot=document.createElement('div');dot.className='mdot';
+  dot.style.left=Math.random()*88+'%';dot.style.top=Math.random()*78+'%';
+  dot.style.background={DoS:'#ff4444',Probe:'#4488ff',R2L:'#ffaa00',U2R:'#aa66ff'}[d.clase]||'#888';
+  dot.style.animationDuration=(1+Math.random()*2)+'s';
+  m.appendChild(dot);setTimeout(()=>dot.remove(),4000);
+}
+
+// ── Auto monitoreo ─────────────────────────────────────────────────────────
+function togAuto(){
+  const btn=document.getElementById('btn-auto');
+  if(monitoreo){clearInterval(mTimer);monitoreo=false;
+    if(btn){btn.textContent='▶ Auto';btn.classList.remove('on')}
+  }else{monitoreo=true;
+    if(btn){btn.textContent='⏹ Detener';btn.classList.add('on')}
+    mTimer=setInterval(()=>{analizar(TIPOS[tIdx%TIPOS.length]);tIdx++;},2500);
+  }
+}
+
+// ── Modelos ────────────────────────────────────────────────────────────────
+async function loadMetrics(){
+  try{const r=await fetch(`${URL_BASE_API}/api/modelos/Nemesis_MLP/metricas`, {credentials:'include'});const d=await r.json();
+    if(d.recall){
+      document.getElementById('m-r').textContent=(d.recall*100).toFixed(1)+'%';
+      document.getElementById('m-p').textContent=(d.precision*100).toFixed(1)+'%';
+      document.getElementById('m-f').textContent=(d.f1_score*100).toFixed(1)+'%';
+      document.getElementById('m-a').textContent=((d.reporte?.accuracy||0)*100).toFixed(1)+'%';
+    }
+  }catch{}
+}
+
+function arcMLP(){
+  const L=[
+    {n:'Entrada',d:'46 features NSL-KDD',c:'#1e3a5f'},
+    {n:'Densa 1',d:'256 n · ReLU · BatchNorm · Dropout 30%',c:'#0062cc'},
+    {n:'Densa 2',d:'128 n · ReLU · BatchNorm · Dropout 30%',c:'#0076dd'},
+    {n:'Densa 3',d:'64 n · ReLU · BatchNorm · Dropout 30%',c:'#008aee'},
+    {n:'Salida',d:'5 clases · Softmax',c:'#00d4ff'},
+  ];
+  return L.map(l=>`<div style="display:flex;align-items:center;gap:9px;margin-bottom:7px">
+    <div style="width:90px;padding:6px;border-radius:5px;background:${l.c}22;
+      border:1px solid ${l.c}44;text-align:center;font-size:.68rem;
+      font-weight:700;color:${l.c};flex-shrink:0">${l.n}</div>
+    <div style="font-size:.7rem;color:var(--m);font-family:'Share Tech Mono',monospace">${l.d}</div>
+  </div>`).join('<div style="width:2px;height:7px;background:var(--b);margin-left:44px"></div>');
+}
+
+function arcRNN(){
+  const L=[
+    {n:'Entrada',d:'Ventana 10×46 features',c:'#1e3a5f'},
+    {n:'LSTM 1',d:'128 u · return_sequences · Dropout',c:'#6622aa'},
+    {n:'LSTM 2',d:'64 u · Dropout 30%',c:'#7733bb'},
+    {n:'Densa',d:'64 neuronas · ReLU',c:'#8844cc'},
+    {n:'Salida',d:'5 clases · Softmax',c:'#aa66ff'},
+  ];
+  return L.map(l=>`<div style="display:flex;align-items:center;gap:9px;margin-bottom:7px">
+    <div style="width:90px;padding:6px;border-radius:5px;background:${l.c}22;
+      border:1px solid ${l.c}44;text-align:center;font-size:.68rem;
+      font-weight:700;color:${l.c};flex-shrink:0">${l.n}</div>
+    <div style="font-size:.7rem;color:var(--m);font-family:'Share Tech Mono',monospace">${l.d}</div>
+  </div>`).join('<div style="width:2px;height:7px;background:var(--b);margin-left:44px"></div>');
+}
+
+// ── Experimentos ───────────────────────────────────────────────────────────
+async function loadExp(){
+  try{
+    const r=await fetch(`${URL_BASE_API}/api/experimentos`, {credentials:'include'});const d=await r.json();
+    if(!d.modelos)return;
+    const mods=Object.entries(d.modelos);
+    const tbl=document.getElementById('tbl-exp');
+    if(tbl){
+      tbl.innerHTML=`<table style="width:100%;border-collapse:collapse;font-size:.8rem">
+        <thead><tr>${['Modelo','Recall ↑','Precisión','F1','Acc','T.Train'].map(h=>
+          `<th style="padding:7px 11px;text-align:left;border-bottom:1px solid var(--b);
+            color:var(--a);font-size:.68rem;letter-spacing:.5px">${h}</th>`).join('')}</tr></thead>
+        <tbody>${mods.map(([n,m],i)=>{const best=i===0;return`
+          <tr style="border-bottom:1px solid var(--b);${best?'background:rgba(0,212,255,.04)':''}">
+            <td style="padding:7px 11px;font-weight:${best?700:400};
+              color:${best?'var(--a)':'var(--t)'}">${n}${best?' ★':''}</td>
+            <td style="padding:7px 11px;color:${best?'var(--g)':'var(--t)'};font-weight:700">
+              ${(m.recall*100).toFixed(2)}%</td>
+            <td style="padding:7px 11px">${(m.precision*100).toFixed(2)}%</td>
+            <td style="padding:7px 11px">${(m.f1_score*100).toFixed(2)}%</td>
+            <td style="padding:7px 11px">${(m.accuracy*100).toFixed(2)}%</td>
+            <td style="padding:7px 11px;font-family:'Share Tech Mono',monospace;
+              color:var(--m)">${m.tiempo_train_s}s</td>
+          </tr>`}).join('')}</tbody></table>`;
+    }
+    // Gráfica Recall
+    setTimeout(()=>{
+      const cv=document.getElementById('cRecall');if(!cv)return;
+      const ctx=cv.getContext('2d');
+      cv.width=cv.offsetWidth||380;cv.height=220;
+      const W=cv.width,H=cv.height;
+      ctx.fillStyle='#111827';ctx.fillRect(0,0,W,H);
+      const cols=['#00d4ff','#aa66ff','#00ff88','#ff8800','#ff4444','#ffcc00'];
+      const bw=28,gap=14,sx=36;
+      mods.forEach(([n,m],i)=>{
+        const x=sx+i*(bw+gap),h=(m.recall)*(H-55);
+        const c=cols[i%cols.length];
+        ctx.fillStyle=c+'44';ctx.fillRect(x,H-40-h,bw,h);
+        ctx.fillStyle=c;ctx.fillRect(x,H-40-3,bw,3);
+        ctx.fillStyle='#c8d8e8';ctx.font='8px Share Tech Mono,monospace';
+        ctx.textAlign='center';
+        ctx.fillText((m.recall*100).toFixed(1)+'%',x+bw/2,H-40-h-4);
+        ctx.save();ctx.translate(x+bw/2,H-25);ctx.rotate(-Math.PI/4);
+        ctx.fillText(n.split(' ')[0],0,0);ctx.restore();
+      });
+      const y85=H-40-(0.85)*(H-55);
+      ctx.strokeStyle='#ffaa0066';ctx.setLineDash([4,4]);
+      ctx.beginPath();ctx.moveTo(sx,y85);ctx.lineTo(W-10,y85);ctx.stroke();
+      ctx.fillStyle='#ffaa00';ctx.font='8px Share Tech Mono,monospace';
+      ctx.textAlign='left';ctx.fillText('85%',W-26,y85-3);
+
+      // Tiempo
+      const cv2=document.getElementById('cTiempo');if(!cv2)return;
+      const ctx2=cv2.getContext('2d');
+      cv2.width=cv2.offsetWidth||380;cv2.height=220;
+      ctx2.fillStyle='#111827';ctx2.fillRect(0,0,cv2.width,cv2.height);
+      const maxT=Math.max(...mods.map(([,m])=>m.tiempo_train_s));
+      mods.forEach(([n,m],i)=>{
+        const x=sx+i*(bw+gap),h=(m.tiempo_train_s/maxT)*(H-55);
+        const c=cols[i%cols.length];
+        ctx2.fillStyle=c+'44';ctx2.fillRect(x,H-40-h,bw,h);
+        ctx2.fillStyle=c;ctx2.fillRect(x,H-40-3,bw,3);
+        ctx2.fillStyle='#c8d8e8';ctx2.font='8px Share Tech Mono,monospace';
+        ctx2.textAlign='center';
+        ctx2.fillText(m.tiempo_train_s+'s',x+bw/2,H-40-h-4);
+        ctx2.save();ctx2.translate(x+bw/2,H-25);ctx2.rotate(-Math.PI/4);
+        ctx2.fillText(n.split(' ')[0],0,0);ctx2.restore();
+      });
+    },150);
+  }catch(e){console.error(e)}
+}
+
+// ── Logout ─────────────────────────────────────────────────────────────────
+async function logout(){
+  await fetch(`${URL_BASE_API}/api/auth/logout`, {credentials:'include',method:'POST'});
+  window.location.href='login.html';
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+async function cargarSesionYArrancar(){
+  try{
+    const r = await fetch(`${URL_BASE_API}/api/auth/estado`, {credentials:'include'});
+    if(!r.ok){
+      window.location.href='login.html';
+      return;
+    }
+    const sesion = await r.json();
+    ROL_USUARIO = sesion.rol;
+    const inicial = sesion.nombre[0].toUpperCase();
+    document.querySelector('.av').textContent = inicial;
+    document.querySelector('.un').textContent = sesion.nombre;
+    document.querySelector('.ur').textContent = sesion.rol;
+  }catch(e){
+    window.location.href='login.html';
+    return;
+  }
+
+  render('dashboard');
+  iniciarPollingRR();
+  if(ROL_USUARIO !== 'Administrador'){
+    const niUsuarios = document.getElementById('ni-usuarios');
+    if(niUsuarios) niUsuarios.style.display = 'none';
+  }
+}
+window.onload=cargarSesionYArrancar;
+</script></body></html>

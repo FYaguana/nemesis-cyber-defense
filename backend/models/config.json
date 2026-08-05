@@ -1,0 +1,11 @@
+{
+  "n_features": 45,
+  "n_clases": 5,
+  "clases": [
+    "DoS",
+    "NORMAL",
+    "Probe",
+    "R2L",
+    "U2R"
+  ]
+}

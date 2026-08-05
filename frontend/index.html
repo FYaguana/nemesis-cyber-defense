@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="es"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nemesis – Acceso Seguro</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Share+Tech+Mono&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Rajdhani',sans-serif;background:#050c14;min-height:100vh;
+  display:flex;align-items:center;justify-content:center;overflow:hidden}
+.bg{position:fixed;inset:0;
+  background-image:linear-gradient(rgba(0,212,255,.03) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,212,255,.03) 1px,transparent 1px);
+  background-size:40px 40px;animation:g 20s linear infinite}
+@keyframes g{to{background-position:40px 40px}}
+.scan{position:fixed;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,#00d4ff44,transparent);
+  animation:scan 4s linear infinite}
+@keyframes scan{to{top:100vh}}
+.card{position:relative;z-index:10;background:rgba(13,21,33,.95);
+  border:1px solid #1e3a5f;border-radius:16px;padding:44px 40px;width:420px;
+  backdrop-filter:blur(20px);box-shadow:0 0 60px rgba(0,212,255,.08)}
+.logo{text-align:center;margin-bottom:28px}
+.logo-icon{width:60px;height:60px;background:linear-gradient(135deg,#0062cc,#00d4ff);
+  border-radius:14px;margin:0 auto 10px;display:flex;align-items:center;
+  justify-content:center;font-size:26px;box-shadow:0 0 28px rgba(0,212,255,.3)}
+h1{font-size:1.5rem;color:#00d4ff;font-weight:700;letter-spacing:2px}
+.sub{font-size:.72rem;color:#4a7a9b;font-family:'Share Tech Mono',monospace;margin-top:3px}
+.dots{display:flex;gap:8px;justify-content:center;margin-bottom:24px}
+.dot{width:8px;height:8px;border-radius:50%;background:#1e3a5f;transition:all .3s}
+.dot.a{background:#00d4ff;box-shadow:0 0 8px #00d4ff}
+.dot.d{background:#00cc88}
+.step{display:none}.step.on{display:block}
+label{display:block;font-size:.78rem;color:#7a9ab5;margin-bottom:5px;
+  font-weight:600;letter-spacing:.5px}
+input[type=email],input[type=text]{width:100%;padding:11px 14px;
+  background:#0a1825;border:1px solid #1e3a5f;border-radius:9px;
+  color:#e0e6f0;font-size:.93rem;font-family:'Rajdhani',sans-serif;
+  outline:none;transition:border-color .2s,box-shadow .2s}
+input:focus{border-color:#00d4ff;box-shadow:0 0 0 3px rgba(0,212,255,.1)}
+.ig{margin-bottom:18px}
+.btn-ms{width:100%;padding:12px;background:linear-gradient(135deg,#0062cc,#0078d4);
+  border:none;border-radius:9px;color:#fff;font-size:.95rem;font-weight:700;
+  font-family:'Rajdhani',sans-serif;cursor:pointer;display:flex;
+  align-items:center;justify-content:center;gap:10px;transition:all .2s;
+  box-shadow:0 4px 18px rgba(0,98,204,.3);letter-spacing:.5px}
+.btn-ms:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(0,98,204,.5)}
+.btn-ms svg{width:20px;height:20px;flex-shrink:0}
+.btn-p{width:100%;padding:12px;background:linear-gradient(135deg,#00d4ff,#0099cc);
+  border:none;border-radius:9px;color:#050c14;font-size:.95rem;font-weight:700;
+  font-family:'Rajdhani',sans-serif;cursor:pointer;letter-spacing:.5px;
+  transition:all .2s;box-shadow:0 4px 18px rgba(0,212,255,.2)}
+.btn-p:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(0,212,255,.35)}
+.div{display:flex;align-items:center;gap:10px;margin:16px 0;
+  color:#2a4a6a;font-size:.75rem}
+.div::before,.div::after{content:'';flex:1;height:1px;background:#1e3a5f}
+.err{background:#1a0505;border:1px solid #ff444433;border-radius:7px;
+  padding:9px 13px;color:#ff8888;font-size:.8rem;margin-bottom:14px;display:none}
+.uprv{display:flex;align-items:center;gap:10px;background:#0a1825;
+  border:1px solid #1e3a5f;border-radius:9px;padding:11px 14px;margin-bottom:18px}
+.av{width:38px;height:38px;border-radius:50%;
+  background:linear-gradient(135deg,#0062cc,#00d4ff);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:700;color:#fff;font-size:.95rem;flex-shrink:0}
+.ui p{font-size:.88rem;color:#e0e6f0;font-weight:600}
+.ui span{font-size:.72rem;color:#7a9ab5;font-family:'Share Tech Mono',monospace}
+.mfa-info{background:#0a1825;border:1px solid #00d4ff22;border-radius:10px;
+  padding:16px;text-align:center;margin-bottom:20px}
+.mfa-info p{font-size:.8rem;color:#7a9ab5;margin-bottom:6px}
+.code-hint{font-family:'Share Tech Mono',monospace;font-size:.85rem;color:#00d4ff;
+  background:#003a5533;padding:6px 14px;border-radius:6px;
+  display:inline-block;margin-top:4px;letter-spacing:2px}
+.mfa-row{display:flex;gap:8px;justify-content:center;margin-bottom:18px}
+.md{width:46px;height:54px;text-align:center;font-size:1.3rem;
+  font-family:'Share Tech Mono',monospace;font-weight:700;
+  background:#0a1825;border:2px solid #1e3a5f;border-radius:9px;
+  color:#00d4ff;transition:border-color .2s;outline:none}
+.md:focus{border-color:#00d4ff;box-shadow:0 0 0 3px rgba(0,212,255,.1)}
+.demo{margin-top:18px;padding-top:14px;border-top:1px solid #1e3a5f}
+.demo-lbl{font-size:.68rem;color:#2a4a6a;text-align:center;margin-bottom:7px;
+  font-family:'Share Tech Mono',monospace}
+.pills{display:flex;flex-wrap:wrap;gap:5px;justify-content:center}
+.pill{padding:4px 10px;border:1px solid #1e3a5f;border-radius:18px;
+  font-size:.7rem;color:#4a7a9b;cursor:pointer;transition:all .2s;background:#0a1825}
+.pill:hover{border-color:#00d4ff44;color:#00d4ff;background:#003a5522}
+.sec{display:flex;align-items:center;gap:6px;justify-content:center;
+  margin-top:20px;font-size:.68rem;color:#2a4a6a;
+  font-family:'Share Tech Mono',monospace}
+.spin{display:none;text-align:center;padding:24px}
+.spinner{width:34px;height:34px;border:3px solid #1e3a5f;border-top-color:#00d4ff;
+  border-radius:50%;animation:sp .8s linear infinite;margin:0 auto 10px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.ld-msg{color:#7a9ab5;font-size:.82rem;font-family:'Share Tech Mono',monospace}
+</style></head><body>
+<div class="bg"></div><div class="scan"></div>
+<div class="card">
+  <div class="logo">
+    <div class="logo-icon">🛡️</div>
+    <h1>NEMESIS</h1>
+    <div class="sub">CYBER DEFENSE PLATFORM v2.0</div>
+  </div>
+  <div class="dots">
+    <div class="dot a" id="d1"></div>
+    <div class="dot" id="d2"></div>
+    <div class="dot" id="d3"></div>
+  </div>
+
+  <!-- Step 1 -->
+  <div class="step on" id="s1">
+    <div class="err" id="e1">Correo no registrado en el sistema.</div>
+    <div class="ig">
+      <label>CORREO CORPORATIVO</label>
+      <input type="email" id="email" placeholder="usuario@empresa.ec"
+        onkeydown="if(event.key==='Enter')cont1()">
+    </div>
+    <button class="btn-ms" onclick="loginMS()">
+      <svg viewBox="0 0 21 21" fill="none">
+        <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+        <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+        <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+        <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+      </svg>
+      Continuar con Microsoft
+    </button>
+    <div class="div">o ingresa tu correo</div>
+    <button class="btn-p" onclick="cont1()">CONTINUAR →</button>
+    <div class="demo">
+      <div class="demo-lbl">// USUARIOS DEMO //</div>
+      <div class="pills">
+        <div class="pill" onclick="sd('admin@nemesis.ec')">admin@nemesis.ec</div>
+        <div class="pill" onclick="sd('tanya@nemesis.ec')">tanya@nemesis.ec</div>
+        <div class="pill" onclick="sd('fernando@nemesis.ec')">fernando@nemesis.ec</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 1b: Contraseña (solo usuarios reales, 2FA) -->
+  <div class="step" id="s1b">
+    <div class="uprv"><div class="av" id="uav-pw">?</div>
+      <div class="ui"><p id="unombre-pw">Usuario</p><span id="uemail-pw">email</span></div></div>
+    <div class="err" id="e1b">Contraseña incorrecta.</div>
+    <div class="ig">
+      <label>CONTRASEÑA</label>
+      <input type="password" id="password" placeholder="••••••••"
+        onkeydown="if(event.key==='Enter')contPassword()">
+    </div>
+    <button class="btn-p" onclick="contPassword()">CONTINUAR →</button>
+    <div id="rec-pass-box" style="display:none;margin-top:14px;padding:10px;background:#1a1205;
+      border:1px solid #ffaa0044;border-radius:8px;text-align:center">
+      <p style="font-size:.75rem;color:#ffaa00;margin:0 0 6px">
+        Varios intentos incorrectos. ¿Olvidaste tu contraseña?</p>
+      <span style="font-size:.8rem;color:#00aaff;cursor:pointer;text-decoration:underline"
+        onclick="recuperarPassword()">Enviarme un link de recuperación</span>
+    </div>
+    <div style="text-align:center;margin-top:12px">
+      <span style="font-size:.75rem;color:#2a4a6a;cursor:pointer" onclick="goS(1)">
+        ← Cambiar cuenta</span>
+    </div>
+  </div>
+
+  <!-- Step 2: MFA -->
+  <div class="step" id="s2">
+    <div class="uprv"><div class="av" id="uav">?</div>
+      <div class="ui"><p id="unombre">Usuario</p><span id="uemail">email</span></div></div>
+    <div class="mfa-info">
+      <p>📱 Código de verificación enviado a tu dispositivo</p>
+      <div class="code-hint" id="mfa-hint"></div>
+      <p style="font-size:.68rem;color:#2a4a6a;margin-top:6px;font-family:'Share Tech Mono',monospace">
+        Microsoft Authenticator · MFA requerido</p>
+    </div>
+    <div class="err" id="e2">Código incorrecto. Intenta nuevamente.</div>
+    <div class="mfa-row" id="mfa-row"></div>
+    <button class="btn-p" onclick="verMFA()">VERIFICAR IDENTIDAD</button>
+    <div style="text-align:center;margin-top:12px">
+      <span style="font-size:.75rem;color:#2a4a6a;cursor:pointer" onclick="goS(1)">
+        ← Cambiar cuenta</span>
+    </div>
+  </div>
+
+  <!-- Step 3: Loading -->
+  <div class="step" id="s3">
+    <div class="spin" style="display:block">
+      <div class="spinner"></div>
+      <div class="ld-msg" id="ld-msg">Verificando...</div>
+    </div>
+  </div>
+
+  <div class="sec">🔒 Conexión TLS 1.3 · Zero Trust · MFA</div>
+</div>
+<script>
+const URL_BASE_API = window.NEMESIS_API_URL || "http://localhost:8000";
+let em='',usr=null;
+// MFA inputs
+const row=document.getElementById('mfa-row');
+for(let i=0;i<6;i++){
+  const inp=document.createElement('input');
+  inp.className='md';inp.maxLength=1;inp.id='m'+i;inp.type='text';
+  inp.oninput=e=>{if(e.target.value&&i<5)document.getElementById('m'+(i+1)).focus()};
+  inp.onkeydown=e=>{
+    if(e.key==='Backspace'&&!e.target.value&&i>0)document.getElementById('m'+(i-1)).focus();
+    if(e.key==='Enter')verMFA();
+  };
+  row.appendChild(inp);
+}
+function sd(e){document.getElementById('email').value=e}
+function goS(n){
+  document.querySelectorAll('.step').forEach(s=>s.classList.remove('on'));
+  document.getElementById('s'+n).classList.add('on');
+  const nDot = (n==='1b') ? 1 : n;
+  for(let i=1;i<=3;i++){
+    const d=document.getElementById('d'+i);
+    d.className='dot'+(i===nDot?' a':i<nDot?' d':'');
+  }
+}
+function loginMS(){
+  const e=document.getElementById('email').value.trim()||'admin@nemesis.ec';
+  document.getElementById('email').value=e;
+  cont1(true);
+}
+async function cont1(ms=false){
+  const email=document.getElementById('email').value.trim();
+  document.getElementById('e1').style.display='none';
+  if(!email){document.getElementById('e1').textContent='Ingresa tu correo.';
+    document.getElementById('e1').style.display='block';return}
+  goS(3);document.getElementById('ld-msg').textContent=ms
+    ?'Conectando con Microsoft Entra ID...':'Verificando cuenta...';
+  await sleep(ms?2000:1200);
+  const r=await fetch(`${URL_BASE_API}/api/auth/check-email`,{method:'POST',credentials:'include',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
+  const d=await r.json();
+  if(!d.ok){goS(1);document.getElementById('e1').textContent='Correo no registrado. Usa un usuario demo.';
+    document.getElementById('e1').style.display='block';return}
+  em=email;usr=d.usuario;
+
+  if(d.tipo==='real'){
+    // Usuario real: primer factor = contraseña, antes de llegar al código MFA.
+    document.getElementById('unombre-pw').textContent=d.usuario.nombre;
+    document.getElementById('uemail-pw').textContent=email;
+    document.getElementById('uav-pw').textContent=d.usuario.nombre[0].toUpperCase();
+    document.getElementById('e1b').style.display='none';
+    document.getElementById('password').value='';
+    goS('1b');
+    setTimeout(()=>document.getElementById('password').focus(),300);
+    return;
+  }
+
+  // Usuario demo: sin contraseña, va directo al código.
+  document.getElementById('unombre').textContent=d.usuario.nombre;
+  document.getElementById('uemail').textContent=email;
+  document.getElementById('uav').textContent=d.usuario.nombre[0].toUpperCase();
+  document.getElementById('mfa-hint').textContent='Código demo: '+d.usuario.mfa_code;
+  goS(2);setTimeout(()=>document.getElementById('m0').focus(),300);
+}
+async function contPassword(){
+  const password=document.getElementById('password').value;
+  document.getElementById('e1b').style.display='none';
+  if(!password){document.getElementById('e1b').textContent='Ingresá tu contraseña.';
+    document.getElementById('e1b').style.display='block';return}
+  goS(3);document.getElementById('ld-msg').textContent='Verificando contraseña...';
+  await sleep(700);
+  const r=await fetch(`${URL_BASE_API}/api/auth/verify-password`,{method:'POST',credentials:'include',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,password})});
+  const d=await r.json();
+  if(!d.ok){
+    goS('1b');
+    document.getElementById('e1b').textContent='Contraseña incorrecta.';
+    document.getElementById('e1b').style.display='block';
+    document.getElementById('rec-pass-box').style.display = d.mostrar_recuperar ? 'block' : 'none';
+    return;
+  }
+  document.getElementById('unombre').textContent=usr.nombre;
+  document.getElementById('uemail').textContent=em;
+  document.getElementById('uav').textContent=usr.nombre[0].toUpperCase();
+  document.getElementById('mfa-hint').textContent='Ingresá el código de tu app autenticadora (Google Authenticator, Authy, etc.)';
+  goS(2);setTimeout(()=>document.getElementById('m0').focus(),300);
+}
+async function recuperarPassword(){
+  const box = document.getElementById('rec-pass-box');
+  box.innerHTML = '<p style="font-size:.78rem;color:#7a95ad">Enviando...</p>';
+  try{
+    const r = await fetch(`${URL_BASE_API}/api/auth/recuperar/solicitar`, {method:'POST',credentials:'include',
+      headers:{'Content-Type':'application/json'}, body: JSON.stringify({email: em})});
+    const d = await r.json();
+    box.innerHTML = `<p style="font-size:.78rem;color:#00ff88">${d.mensaje}</p>`;
+  }catch(e){
+    box.innerHTML = '<p style="font-size:.78rem;color:#ff6666">Error de conexión, intentá de nuevo.</p>';
+  }
+}
+async function verMFA(){
+  const code=[0,1,2,3,4,5].map(i=>document.getElementById('m'+i).value).join('');
+  document.getElementById('e2').style.display='none';
+  if(code.length<6){document.getElementById('e2').textContent='Ingresa los 6 dígitos.';
+    document.getElementById('e2').style.display='block';return}
+  goS(3);document.getElementById('ld-msg').textContent='Validando MFA · Accediendo...';
+  await sleep(1500);
+  const password=document.getElementById('password')?document.getElementById('password').value:'';
+  const r=await fetch(`${URL_BASE_API}/api/auth/verify-mfa`,{method:'POST',credentials:'include',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify({email:em,code,password})});
+  const d=await r.json();
+  if(d.ok){window.location.href='dashboard.html'}
+  else{goS(2);document.getElementById('e2').textContent='Código incorrecto.';
+    document.getElementById('e2').style.display='block';
+    [0,1,2,3,4,5].forEach(i=>document.getElementById('m'+i).value='');
+    document.getElementById('m0').focus()}
+}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+</script></body></html>

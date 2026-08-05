@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nemesis -- Recomendaciones IA (streaming)</title>
+<style>
+  body{background:#050b14;color:#e8f0f7;font-family:Arial,sans-serif;max-width:640px;margin:40px auto;padding:0 20px}
+  h1{font-size:1.3rem;color:#00aaff}
+  button{background:#0062cc;color:white;border:none;padding:10px 18px;border-radius:8px;cursor:pointer;margin:6px 6px 6px 0}
+  #salida{background:#0a1420;border:1px solid #14283d;border-radius:10px;padding:16px;margin-top:16px;min-height:120px;white-space:pre-wrap;font-size:.85rem;line-height:1.5}
+  .paso{background:#0d1b2a;border-radius:8px;padding:10px;margin-bottom:8px}
+  .paso b{color:#00d4ff}
+</style>
+</head>
+<body>
+<h1>Recomendaciones IA -- demo de streaming</h1>
+<p style="color:#7a95ad;font-size:.85rem">
+  Este es el módulo de referencia migrado a la nueva arquitectura backend/frontend.
+  El texto aparece en vivo a medida que la IA lo genera (o cae automáticamente al
+  plan de referencia si no hay API key configurada / se alcanzó el límite de uso).
+</p>
+<button onclick="probar('DoS')">Simular DoS</button>
+<button onclick="probar('Probe')">Simular Probe</button>
+<button onclick="probar('NORMAL')">Simular Normal</button>
+<div id="salida">Elegí un tipo de detección para ver el plan generarse en vivo.</div>
+
+<script type="module">
+  import { solicitarPlanDeRespuestaEnStreaming } from "./js/cliente_recomendaciones_ia.js";
+
+  window.probar = async function (clase) {
+    const salida = document.getElementById("salida");
+    salida.textContent = "";
+
+    await solicitarPlanDeRespuestaEnStreaming(
+      {
+        clase,
+        severidad: clase === "NORMAL" ? "NORMAL" : "CRÍTICO",
+        confianza: clase === "NORMAL" ? 20 : 92,
+        features: clase === "NORMAL" ? [] : [{ feature: "src_bytes", valor: 50000, normal: "1000" }],
+        alertas_recientes: [],
+      },
+      (textoParcial) => {
+        // Efecto de escritura en vivo: mostramos el JSON crudo mientras llega.
+        salida.textContent = textoParcial;
+      },
+      (plan) => {
+        renderizarPlanFinal(plan);
+      },
+      (error) => {
+        salida.textContent = "❌ " + error;
+      }
+    );
+  };
+
+  function renderizarPlanFinal(plan) {
+    const salida = document.getElementById("salida");
+    const encabezado = plan.generado_por_ia
+      ? `🤖 Generado en tiempo real por IA`
+      : `📋 Plan de referencia (${plan.motivo_uso_plantilla})`;
+
+    salida.innerHTML =
+      `<div style="margin-bottom:10px;color:${plan.generado_por_ia ? "#00ff88" : "#ffaa00"}">${encabezado}</div>` +
+      plan.pasos.map((p) => `<div class="paso"><b>${p.titulo}</b><br>${p.detalle}</div>`).join("") +
+      `<div style="margin-top:8px;color:#7a95ad;font-size:.78rem">
+         Tiempo de respuesta: ${plan.tiempo_respuesta} · Prioridad: ${plan.prioridad}<br>
+         ${plan.referencia_nist}
+       </div>`;
+  }
+</script>
+</body>
+</html>

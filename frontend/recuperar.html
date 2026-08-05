@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Recuperar contraseña - Nemesis Cyber Defense</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#050b14;color:#e8f0f7;font-family:'Segoe UI',Arial,sans-serif;
+    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+  .card{background:#0a1420;border:1px solid #14283d;border-radius:14px;padding:32px;
+    max-width:400px;width:100%;text-align:center}
+  h1{font-size:1.3rem;color:#ffaa00;margin-bottom:6px}
+  p{color:#7a95ad;font-size:.85rem;line-height:1.5;margin-bottom:16px}
+  input{width:100%;padding:12px;font-size:1rem;background:#0d1b2a;border:1px solid #14283d;
+    border-radius:8px;color:#e8f0f7;margin-bottom:12px}
+  input#codigo{text-align:center;letter-spacing:6px;font-size:1.3rem}
+  button{width:100%;padding:12px;background:#cc6600;color:white;border:none;border-radius:8px;
+    font-size:.95rem;font-weight:bold;cursor:pointer}
+  .err{color:#ff6666;font-size:.8rem;margin-top:10px;display:none}
+</style>
+</head>
+<body>
+<div class="card" id="card">
+  <h1>🔑 Recuperar contraseña</h1>
+  <p>Cargando...</p>
+</div>
+<script>
+const URL_BASE_API = window.NEMESIS_API_URL || "http://localhost:8000";
+const params = new URLSearchParams(window.location.search);
+const token = params.get('token');
+let usuarioId = null;
+
+async function cargar(){
+  const card = document.getElementById('card');
+  if(!token){ card.innerHTML = '<h1>❌ Link inválido</h1><p>Falta el token de recuperación.</p>'; return; }
+  try{
+    const r = await fetch(`${URL_BASE_API}/api/auth/recuperar/preparar?token=` + encodeURIComponent(token), {credentials:'include'});
+    if(!r.ok){
+      const err = await r.json();
+      card.innerHTML = `<h1>❌ No se pudo continuar</h1><p>${err.detail}</p>`;
+      return;
+    }
+    const d = await r.json();
+    usuarioId = d.usuario_id;
+    card.innerHTML = `
+      <h1>🔑 Recuperar contraseña</h1>
+      <p>Hola ${d.nombre}. Definí tu nueva contraseña y confirmá con el código
+      de tu app autenticadora (todavía necesitás tu teléfono para este paso).</p>
+      <input type="password" id="password" placeholder="Nueva contraseña (mínimo 8 caracteres)">
+      <input type="password" id="password2" placeholder="Confirmar nueva contraseña">
+      <input type="text" id="codigo" maxlength="6" inputmode="numeric" placeholder="Código MFA de 6 dígitos">
+      <button onclick="confirmar()">Restablecer contraseña</button>
+      <div class="err" id="err"></div>
+    `;
+  }catch(e){
+    card.innerHTML = '<h1>❌ Error</h1><p>No se pudo conectar con el servidor.</p>';
+  }
+}
+
+async function confirmar(){
+  const password = document.getElementById('password').value;
+  const password2 = document.getElementById('password2').value;
+  const codigo = document.getElementById('codigo').value.trim();
+  const errEl = document.getElementById('err');
+  errEl.style.display = 'none';
+  if(password.length < 8){ errEl.textContent = 'La contraseña debe tener al menos 8 caracteres.'; errEl.style.display='block'; return; }
+  if(password !== password2){ errEl.textContent = 'Las contraseñas no coinciden.'; errEl.style.display='block'; return; }
+  if(codigo.length !== 6){ errEl.textContent = 'Ingresá los 6 dígitos del código MFA.'; errEl.style.display='block'; return; }
+  try{
+    const r = await fetch(`${URL_BASE_API}/api/auth/recuperar/confirmar`, {
+      credentials: 'include',
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({token, password, password_confirmacion: password2, codigo})
+    });
+    const d = await r.json();
+    if(!r.ok){ errEl.textContent = d.detail || 'No se pudo restablecer la contraseña.'; errEl.style.display='block'; return; }
+    document.getElementById('card').innerHTML =
+      '<h1>✅ Contraseña actualizada</h1><p>Ya podés iniciar sesión con tu nueva contraseña.</p>' +
+      '<button onclick="window.location.href=\'/\'">Ir al login</button>';
+  }catch(e){
+    errEl.textContent = 'Error de conexión: ' + e.message; errEl.style.display='block';
+  }
+}
+cargar();
+</script>
+</body>
+</html>
