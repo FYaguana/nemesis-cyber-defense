@@ -3,11 +3,15 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Dependencias del sistema necesarias para scapy (captura de paquetes) y
-# para compilar algunas dependencias de tensorflow/scikit-learn.
+# gcc: compilar algunas dependencias de tensorflow/scikit-learn.
+# iputils-ping + iproute2: usados por dispositivos_red.py (ping sweep +
+#   `ip neigh`) para el inventario de dispositivos LAN, SIN Npcap.
+# libpcap-dev: solo necesario si se activa el backend opcional "scapy".
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpcap-dev \
     gcc \
+    iputils-ping \
+    iproute2 \
+    libpcap-dev \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .

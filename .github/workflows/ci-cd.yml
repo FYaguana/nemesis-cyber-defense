@@ -1,0 +1,127 @@
+name: CI/CD - Nemesis Cyber Defense
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_BACKEND: ${{ github.repository }}/nemesis-backend
+  IMAGE_FRONTEND: ${{ github.repository }}/nemesis-frontend
+
+jobs:
+  # ---------------------------------------------------------------------
+  # 1) Verificación rápida: sintaxis Python + import check (sin instalar
+  #    tensorflow completo en cada corrida para no gastar minutos de CI).
+  # ---------------------------------------------------------------------
+  backend-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependencias livianas (sin tensorflow)
+        run: |
+          python -m pip install --upgrade pip
+          pip install fastapi uvicorn pyotp qrcode joblib pandas numpy scikit-learn psutil requests python-multipart flake8
+
+      - name: Chequeo de sintaxis (py_compile)
+        run: |
+          python -m compileall -q backend/app
+
+      - name: Lint (errores reales solamente, no estilo)
+        run: |
+          flake8 backend/app --count --select=E9,F63,F7,F82 --show-source --statistics
+
+  # ---------------------------------------------------------------------
+  # 2) Verificación del frontend: valida sintaxis JS de cada página.
+  # ---------------------------------------------------------------------
+  frontend-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Validar sintaxis JS embebido/archivos .js
+        run: |
+          for f in $(find frontend -name "*.js"); do
+            echo "Verificando $f"
+            node --check "$f"
+          done
+
+  # ---------------------------------------------------------------------
+  # 3) Build & push de imágenes Docker a GitHub Container Registry.
+  #    Solo en push a main (no en PRs), y solo si el lint pasó.
+  # ---------------------------------------------------------------------
+  docker-build-push:
+    needs: [backend-lint, frontend-lint]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login a GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configurar Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & push backend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_BACKEND }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_BACKEND }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build & push frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_FRONTEND }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_FRONTEND }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ---------------------------------------------------------------------
+  # 4) Deploy opcional: dispara el webhook de deploy de la plataforma
+  #    elegida (Render / Railway) DESPUÉS de que las imágenes se subieron.
+  #    Requiere el secret DEPLOY_HOOK_URL en Settings -> Secrets -> Actions.
+  #    Si no configuraste el secret, este paso se saltea solo.
+  # ---------------------------------------------------------------------
+  deploy:
+    needs: [docker-build-push]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Disparar deploy hook (si está configurado)
+        run: |
+          if [ -n "${{ secrets.DEPLOY_HOOK_URL }}" ]; then
+            curl -fsSL -X POST "${{ secrets.DEPLOY_HOOK_URL }}"
+            echo "Deploy hook disparado."
+          else
+            echo "DEPLOY_HOOK_URL no configurado; saltando deploy automático."
+          fi
