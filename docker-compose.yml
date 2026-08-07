@@ -9,18 +9,17 @@ services:
       - ./backend/models:/app/models
     environment:
       - ORIGENES_FRONTEND_PERMITIDOS=http://localhost:5173
-      # - GEMINI_API_KEY=  # opcional: si se define acá, tiene prioridad sobre
-      #                      la key guardada desde el panel de administración
-    # Necesario para que scapy pueda capturar tráfico de red real dentro del contenedor.
     cap_add:
       - NET_ADMIN
       - NET_RAW
-    network_mode: host  # requerido para que la captura de paquetes vea la red real del host
+    # network_mode: host  <-- Comenta o borra esta línea
 
   frontend:
     build: ./frontend
     container_name: nemesis-frontend
     ports:
       - "5173:80"
+    environment:
+      - NEMESIS_API_URL=http://localhost:8000
     depends_on:
       - backend

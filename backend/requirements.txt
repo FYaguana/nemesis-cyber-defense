@@ -9,4 +9,10 @@ pandas>=2.0.0
 numpy>=1.24.0
 scikit-learn>=1.3.0
 tensorflow>=2.13.0
-scapy>=2.5.0
+psutil>=5.9.0
+
+# scapy es OPCIONAL: solo hace falta si elegís el backend de monitoreo
+# "scapy" (captura de paquetes real). En Windows requiere instalar Npcap
+# (https://npcap.com) y correr como Administrador. El backend por defecto
+# ahora es "psutil", que no necesita ninguno de los dos.
+# scapy>=2.5.0

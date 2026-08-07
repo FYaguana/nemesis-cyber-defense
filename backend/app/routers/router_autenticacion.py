@@ -12,7 +12,7 @@ from app.servicios.servicio_autenticacion import ServicioAutenticacion
 from app.motor import gestion_usuarios
 from app.nucleo.gestor_sesiones import eliminar_sesion
 from app.nucleo.seguridad import requiere_sesion_autenticada
-from app.nucleo.configuracion import URL_FRONTEND
+from app.nucleo.configuracion import URL_FRONTEND, COOKIE_SECURE
 
 enrutador = APIRouter(prefix="/api/auth", tags=["Autenticación"])
 _servicio = ServicioAutenticacion()
@@ -49,8 +49,17 @@ async def verificar_mfa(peticion: Request, respuesta: Response):
     if token is None:
         return {"ok": False}
 
+    # Con el frontend haciendo de proxy inverso hacia este backend (ver
+    # frontend/nginx.conf.template), el navegador ve TODO como un solo
+    # origen -- ya no hace falta samesite="none" (eso era solo necesario
+    # cuando el navegador hablaba directo con dos dominios distintos).
+    # "lax" alcanza y es más restrictivo/seguro por defecto.
+    # secure=COOKIE_SECURE: True en producción (Render, siempre HTTPS),
+    # False en desarrollo local por HTTP plano (ver COOKIE_SECURE en
+    # nucleo/configuracion.py).
     respuesta.set_cookie("nemesis_session", token, httponly=True,
-                          max_age=DURACION_COOKIE_SEGUNDOS, samesite="lax")
+                          max_age=DURACION_COOKIE_SEGUNDOS,
+                          samesite="lax", secure=COOKIE_SECURE)
     return {"ok": True}
 
 
@@ -59,7 +68,9 @@ async def cerrar_sesion(peticion: Request, respuesta: Response):
     token = peticion.cookies.get("nemesis_session")
     if token:
         eliminar_sesion(token)
-    respuesta.delete_cookie("nemesis_session")
+    # Los atributos deben coincidir con los usados en set_cookie, si no
+    # algunos navegadores no la borran correctamente.
+    respuesta.delete_cookie("nemesis_session", samesite="lax", secure=COOKIE_SECURE)
     return {"ok": True}
 
 

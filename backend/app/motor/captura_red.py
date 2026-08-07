@@ -89,38 +89,60 @@ class GestorCapturaReal:
                           "ciclos_completados": 0}
         self.error = None
         self.iface_actual = None
+        self.backend_actual = "psutil"
         self._detener_solicitado = threading.Event()
 
-    def iniciar_continuo(self, iface: str = None, ventana: int = 5):
+    def iniciar_continuo(self, iface: str = None, ventana: int = 5, backend: str = None):
         """Arranca (o re-arranca) el monitoreo continuo con la interfaz dada.
         Si no se especifica interfaz, intenta la guardada en config y luego
-        la autodetectada."""
+        la autodetectada.
+
+        backend:
+            "psutil" (default) -- NO requiere Npcap/libpcap. Lee conexiones
+                y contadores que el SO ya expone. Recomendado salvo que se
+                necesite inspección de paquete a paquete.
+            "scapy"  -- captura real de paquetes (más preciso), requiere
+                Npcap instalado en Windows (o libpcap en Linux/Mac) y
+                privilegios de administrador/root.
+        """
         if self.activa:
             return False, "El monitoreo ya está activo."
 
-        if not iface:
-            config = cargar_config()
-            iface = config.get("iface") or detectar_interfaz_predeterminada()
-        if not iface:
-            self.error = ("No se pudo determinar automáticamente la interfaz de red. "
-                          "Configúrala manualmente en 'Red Real'.")
-            logger.warning(self.error)
-            return False, self.error
+        config = cargar_config()
+        backend = (backend or config.get("backend") or "psutil").lower()
+        if backend not in ("psutil", "scapy"):
+            backend = "psutil"
+
+        if backend == "scapy":
+            if not iface:
+                iface = config.get("iface") or detectar_interfaz_predeterminada()
+            if not iface:
+                self.error = ("No se pudo determinar automáticamente la interfaz de red. "
+                              "Configúrala manualmente en 'Red Real', o usá el backend "
+                              "'psutil' que no necesita interfaz ni Npcap.")
+                logger.warning(self.error)
+                return False, self.error
+        # El backend "psutil" no necesita nombre de interfaz: monitorea
+        # todas las conexiones activas del equipo vía el SO.
 
         self.activa = True
         self.error = None
         self._detener_solicitado.clear()
         self.iface_actual = iface
+        self.backend_actual = backend
         with self.lock:
             self.resultados = []
         self.progreso = {"transcurrido": 0, "flujos_procesados": 0,
                           "flujos_omitidos": 0, "ultimo_error_flujo": None,
                           "ciclos_completados": 0}
 
-        self.hilo = threading.Thread(target=self._ejecutar_continuo, args=(iface, ventana), daemon=True)
+        objetivo = self._ejecutar_continuo if backend == "scapy" else self._ejecutar_continuo_psutil
+        args = (iface, ventana) if backend == "scapy" else (ventana,)
+        self.hilo = threading.Thread(target=objetivo, args=args, daemon=True)
         self.hilo.start()
-        guardar_config({"iface": iface})
-        logger.info("Monitoreo continuo iniciado en interfaz '%s' (ventana=%ss)", iface, ventana)
+        guardar_config({"iface": iface, "backend": backend})
+        logger.info("Monitoreo continuo iniciado (backend=%s, iface=%s, ventana=%ss)",
+                    backend, iface, ventana)
         return True, "Monitoreo iniciado."
 
     def detener(self):
@@ -209,6 +231,81 @@ class GestorCapturaReal:
             logger.info("Monitoreo continuo detenido. Flujos procesados: %s en %s ciclos",
                         self.progreso["flujos_procesados"], self.progreso["ciclos_completados"])
 
+    def _ejecutar_continuo_psutil(self, ventana):
+        """Igual que _ejecutar_continuo pero SIN scapy/Npcap: usa
+        captura_psutil.AgregadorFlujosPsutil, que lee conexiones y
+        contadores de red vía el sistema operativo."""
+        try:
+            from app.motor.captura_psutil import AgregadorFlujosPsutil
+        except ImportError as e:
+            self.error = f"Falta una dependencia: {e}. Instala con: pip install psutil"
+            self.activa = False
+            logger.error(self.error)
+            return
+
+        from app.motor.procesador_nemesis import obtener_procesador
+        proc = obtener_procesador()
+
+        if not proc._cargado:
+            self.error = "Los modelos no están cargados. Ejecuta entrenar_nemesis.py primero."
+            self.activa = False
+            logger.error(self.error)
+            return
+
+        inicio_global = time.time()
+        CLAVES_METADATO = {"timestamp", "src_ip", "dst_ip", "src_port", "dst_port"}
+
+        def procesar_filas(filas):
+            for fila in filas:
+                metadato = {k: fila[k] for k in CLAVES_METADATO if k in fila}
+                muestra = {k: v for k, v in fila.items() if k not in CLAVES_METADATO}
+                try:
+                    resultado = proc.analizar_trafico(muestra)
+                    if "error" in resultado:
+                        logger.warning("Flujo real omitido (%s): %s", metadato, resultado["error"])
+                        self.progreso["flujos_omitidos"] += 1
+                        self.progreso["ultimo_error_flujo"] = resultado["error"]
+                        continue
+                    resultado["_fuente"] = "red_real_psutil"
+                    resultado["_flujo"] = metadato
+                    with self.lock:
+                        self.resultados.append(resultado)
+                        if len(self.resultados) > 500:
+                            self.resultados = self.resultados[-500:]
+                        self.progreso["flujos_procesados"] += 1
+                except Exception as e:
+                    logger.error("Error analizando flujo real (%s): %s", metadato, e)
+                    self.progreso["flujos_omitidos"] += 1
+                    self.progreso["ultimo_error_flujo"] = str(e)
+
+        try:
+            agregador = AgregadorFlujosPsutil(ventana_segundos=ventana)
+            while not self._detener_solicitado.is_set():
+                agregador.iniciar_ventana()
+                # Espera activa (en pasos cortos) para poder cortar casi al
+                # instante si se pide detener, igual que el stop_filter de scapy.
+                objetivo = time.time() + ventana
+                while time.time() < objetivo and not self._detener_solicitado.is_set():
+                    time.sleep(min(0.5, max(objetivo - time.time(), 0)))
+
+                filas = agregador.construir_filas()
+                procesar_filas(filas)
+                self.progreso["ciclos_completados"] += 1
+                self.progreso["transcurrido"] = round(time.time() - inicio_global, 1)
+
+        except PermissionError:
+            self.error = ("Permiso denegado leyendo conexiones de red. En Windows corré el "
+                          "backend como Administrador; en Linux/Mac con sudo. (Esto NO "
+                          "requiere instalar Npcap, solo privilegios del proceso.)")
+            logger.error(self.error)
+        except Exception as e:
+            self.error = str(e)
+            logger.error("Error durante el monitoreo continuo (psutil): %s", e)
+        finally:
+            self.activa = False
+            logger.info("Monitoreo continuo (psutil) detenido. Flujos procesados: %s en %s ciclos",
+                        self.progreso["flujos_procesados"], self.progreso["ciclos_completados"])
+
     def obtener_estado(self, desde_indice: int = 0):
         with self.lock:
             total = len(self.resultados)
@@ -217,6 +314,7 @@ class GestorCapturaReal:
             "activa": self.activa,
             "error": self.error,
             "iface": self.iface_actual,
+            "backend": getattr(self, "backend_actual", "psutil"),
             "progreso": self.progreso,
             "total_resultados": total,
             "nuevos": nuevos,
