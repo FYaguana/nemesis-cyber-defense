@@ -9,8 +9,12 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_BACKEND: ${{ github.repository }}/nemesis-backend
-  IMAGE_FRONTEND: ${{ github.repository }}/nemesis-frontend
+  # github.repository/owner pueden tener mayúsculas (ej. FYaguana), pero
+  # Docker exige que los nombres de imagen sean 100% minúsculas. Estas dos
+  # variables se recalculan en minúsculas en el job docker-build-push, más
+  # abajo, y son las que realmente se usan para los tags.
+  IMAGE_BACKEND_SUFFIX: nemesis-backend
+  IMAGE_FRONTEND_SUFFIX: nemesis-frontend
 
 jobs:
   # ---------------------------------------------------------------------
@@ -73,6 +77,11 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v4
+
+      - name: Calcular nombre de imagen en minúsculas
+        run: |
+          echo "IMAGE_BACKEND=$(echo '${{ github.repository }}/${{ env.IMAGE_BACKEND_SUFFIX }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
+          echo "IMAGE_FRONTEND=$(echo '${{ github.repository }}/${{ env.IMAGE_FRONTEND_SUFFIX }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
 
       - name: Login a GHCR
         uses: docker/login-action@v3
