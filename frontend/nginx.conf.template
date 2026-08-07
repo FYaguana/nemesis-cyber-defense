@@ -11,8 +11,17 @@ server {
     # contenedor por docker-entrypoint-nemesis.sh usando envsubst.
     location /api/ {
         proxy_pass ${NEMESIS_API_URL}/api/;
+        # Sin esto, nginx NO manda el SNI al conectar por HTTPS al backend.
+        # Render usa el SNI para enrutar al servicio correcto y elegir el
+        # certificado -- sin él, el handshake TLS falla directamente
+        # (visible en logs como "SSL_do_handshake() failed ... alert
+        # number 40: handshake_failure").
+        proxy_ssl_server_name on;
         proxy_http_version 1.1;
-        proxy_set_header Host $host;
+        # El Host debe ser el del BACKEND real (no el del frontend), porque
+        # Render también puede usar el header Host -- además del SNI -- para
+        # decidir a qué servicio dirigir la petición.
+        proxy_set_header Host ${NEMESIS_API_HOST};
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
