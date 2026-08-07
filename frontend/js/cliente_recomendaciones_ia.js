@@ -7,7 +7,7 @@
  * endpoint requiere POST con body (EventSource solo soporta GET).
  */
 
-const URL_BASE_API = window.NEMESIS_API_URL || "http://localhost:8000";
+const URL_BASE_API = (typeof window.NEMESIS_API_URL !== "undefined") ? window.NEMESIS_API_URL : "http://localhost:8000";
 
 /**
  * @param {{clase:string, severidad:string, confianza:number, features:Array, alertas_recientes:Array}} deteccion

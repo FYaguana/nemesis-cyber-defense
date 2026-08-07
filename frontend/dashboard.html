@@ -192,7 +192,7 @@ canvas{width:100%!important}
 </main>
 
 <script>
-const URL_BASE_API = window.NEMESIS_API_URL || "http://localhost:8000";
+const URL_BASE_API = (typeof window.NEMESIS_API_URL !== "undefined") ? window.NEMESIS_API_URL : "http://localhost:8000";
 // ── Estado global ──────────────────────────────────────────────────────────
 let ROL_USUARIO = null;
 const C={criticas:0,advertencias:0,normales:0,total:0};
