@@ -1,7 +1,4 @@
 # Nemesis Cyber Defense — Backend/Frontend separados (v3)
-
-# Nemesis Cyber Defense — Backend/Frontend separados (v3, entrega completa)
-
 ## Estado: TODO migrado y probado
 
 Se migró el sistema completo a la nueva arquitectura. Cada pieza se probó con
