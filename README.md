@@ -132,10 +132,3 @@ usa los planes de referencia automáticamente — nunca se rompe.
 | Sintaxis JS de las 7 páginas del frontend (`node --check`) | ✅ |
 | Sintaxis de todos los `.py` del backend (`py_compile`) | ✅ |
 
-## Limitación conocida (heredada del `.rar` que subiste)
-
-Este snapshot no incluye la función de identificación de dispositivo por MAC
-(`identificar_dispositivo`, fabricantes OUI) que se había agregado en una
-sesión anterior — el `.rar` es de un punto previo a esa mejora. Si la querés
-de vuelta, avisame y la reincorporo al módulo `captura_red.py`.
-
