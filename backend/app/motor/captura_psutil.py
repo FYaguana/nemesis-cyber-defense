@@ -1,31 +1,30 @@
 """
-captura_psutil.py -- Monitoreo de red SIN dependencia de Npcap/libpcap.
-========================================================================
-Motivación: scapy.sniff() necesita un driver de captura a bajo nivel
-(Npcap en Windows, libpcap en Linux/Mac). Eso implica instalar software
-adicional y, en Windows, ejecutar como Administrador. Este módulo evita
-esa dependencia por completo usando `psutil`, que lee las conexiones y
-contadores de red que el sistema operativo ya expone (no abre un socket
-en modo promiscuo ni intercepta paquetes ajenos).
+captura_psutil.py -- Monitoreo de RESPALDO sin Npcap/libpcap (modo degradado).
+==============================================================================
+La tesis (Secciones 3.7 y 4.5) define la captura con Scapy, que observa paquetes.
+En Windows eso exige instalar Npcap. Este módulo existe para que el sistema siga
+mostrando actividad de red en equipos donde Scapy NO puede capturar, usando
+`psutil`, que lee las conexiones y contadores que el sistema operativo ya expone
+(no abre sockets en modo promiscuo ni intercepta paquetes).
 
-Costo de la simplificación (documentado, no oculto):
-- No hay inspección de paquete a paquete, así que "flag" (S0/REJ/RSTO/SF)
-  se infiere del ESTADO de la conexión (psutil.net_connections), no de
-  los flags TCP reales.
-- src_bytes/dst_bytes NO son por-conexión (el SO no expone eso sin
-  captura); se aproximan repartiendo el delta de bytes de la interfaz
-  (psutil.net_io_counters) entre las conexiones activas de la ventana.
-  Es una aproximación agregada, útil para alimentar el mismo pipeline
-  de features NSL-KDD-like, pero menos preciso que la captura real.
-- Solo ve conexiones de ESTA máquina (igual que el modo scapy sin
-  puerto SPAN), nunca tráfico ajeno de otros dispositivos de la red.
+DIFERENCIA CON LA TESIS (documentar, no ocultar): la tesis establece que las
+variables no derivables de la observación pasiva NO se aproximan artificialmente.
+En este modo, al no haber paquetes, dos variables SÍ son aproximaciones:
+- "flag" (S0/REJ/RSTO/SF) se infiere del ESTADO de la conexión, no de banderas TCP reales.
+- src_bytes/dst_bytes NO son por conexión: se reparte el delta de bytes de la interfaz
+  entre las conexiones activas de la ventana.
+Por eso (1) cada resultado lleva `_backend = "psutil"` y la interfaz lo muestra como
+"modo de respaldo", y (2) sus capturas NO se usan para reentrenar el modelo (ver
+base_datos.obtener_capturas_etiquetadas). Para resultados comparables con el Capítulo 5
+debe usarse Scapy.
 
-Requisitos: `pip install psutil` (multiplataforma, sin instaladores
-externos). En Windows puede necesitar ejecutar como Administrador para
-ver conexiones de otros procesos, pero NUNCA pide instalar Npcap.
+Solo ve conexiones de ESTA máquina, igual que el modo Scapy sin puerto SPAN.
+Requisitos: `pip install psutil`. En Windows puede requerir Administrador para ver
+conexiones de otros procesos, pero NUNCA pide instalar Npcap.
 """
 
 import logging
+import socket
 import time
 from collections import deque
 from datetime import datetime
@@ -42,6 +41,17 @@ SERVICE_MAP = {
     53: "dns",
     80: "http", 8080: "http", 443: "http",
 }
+
+
+def _macs_locales() -> dict:
+    """IP local -> MAC de la interfaz que la tiene (para identificar el fabricante del equipo)."""
+    mapa = {}
+    for _nombre, direcciones in psutil.net_if_addrs().items():
+        mac = next((d.address for d in direcciones if d.family == psutil.AF_LINK), None)
+        for d in direcciones:
+            if d.family == socket.AF_INET:
+                mapa[d.address] = mac
+    return mapa
 
 
 def resolver_service(puerto):
@@ -110,6 +120,7 @@ class AgregadorFlujosPsutil:
             conexiones = []
 
         n = len(conexiones) or 1
+        macs = _macs_locales()
         bytes_src_por_flujo = delta_sent // n
         bytes_dst_por_flujo = delta_recv // n
 
@@ -128,6 +139,7 @@ class AgregadorFlujosPsutil:
                 "timestamp": datetime.now().isoformat(),
                 "src_ip": c.laddr.ip, "dst_ip": c.raddr.ip,
                 "src_port": c.laddr.port, "dst_port": c.raddr.port,
+                "src_mac": macs.get(c.laddr.ip),
                 "duration": duracion,
                 "protocol_type": proto,
                 "service": servicio,

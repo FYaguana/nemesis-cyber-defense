@@ -3,10 +3,12 @@ router_alertas.py -- Consulta de alertas recientes y etiquetado humano de
 capturas reales (la base del aprendizaje activo / reentrenamiento).
 """
 
-from fastapi import APIRouter, Request, Depends, HTTPException
+from fastapi import APIRouter, Request, Depends, HTTPException, Response
 
 from app.nucleo.seguridad import requiere_sesion_autenticada, SesionUsuario
-from app.motor.base_datos import obtener_alertas_recientes, etiquetar_captura, contar_capturas
+from app.motor.base_datos import (
+    obtener_alertas_recientes, etiquetar_captura, contar_capturas, obtener_resumen_validacion,
+)
 
 CLASES_VALIDAS = ("NORMAL", "DoS", "Probe", "R2L", "U2R")
 
@@ -34,3 +36,23 @@ async def etiquetar_captura_real(
 @enrutador.get("/capturas/estadisticas")
 async def estadisticas_capturas_reales():
     return contar_capturas()
+
+
+@enrutador.get("/capturas/validacion")
+async def validacion_trafico_real():
+    """Resumen CUANTITATIVO de la validación con tráfico real (Sección 5.3 de la tesis):
+    total de flujos, duración de la captura, dispositivos y destinos distintos, distribución
+    por clase, serie temporal por minuto (para graficar los picos) y, si hay etiquetas
+    humanas, una matriz de verdad de terreno parcial."""
+    return obtener_resumen_validacion()
+
+
+@enrutador.get("/capturas/validacion/csv")
+async def validacion_trafico_real_csv():
+    """Serie temporal por minuto en CSV, lista para graficar en el documento de tesis."""
+    resumen = obtener_resumen_validacion()
+    lineas = ["minuto,total_flujos,flujos_no_normales"]
+    for punto in resumen.get("serie_temporal", []):
+        lineas.append(f"{punto['minuto']},{punto['total']},{punto['no_normal']}")
+    return Response("\n".join(lineas) + "\n", media_type="text/csv",
+                    headers={"Content-Disposition": 'attachment; filename="validacion_trafico_real.csv"'})

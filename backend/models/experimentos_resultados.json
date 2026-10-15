@@ -1,0 +1,111 @@
+{
+  "generado_en": "2026-10-15T02:05:49",
+  "semilla": 42,
+  "epocas_maximas": 30,
+  "n_variables_entrada": 45,
+  "n_train": 12750,
+  "n_validacion": 2250,
+  "n_test": 4000,
+  "clases": [
+    "DoS",
+    "NORMAL",
+    "Probe",
+    "R2L",
+    "U2R"
+  ],
+  "resultados": {
+    "MLP Nemesis (Deep Learning)": {
+      "recall": 0.9999,
+      "precision": 0.9994,
+      "f1": 0.9996,
+      "accuracy": 0.9998,
+      "recall_por_clase": {
+        "DoS": 1.0,
+        "NORMAL": 0.9995,
+        "Probe": 1.0,
+        "R2L": 1.0,
+        "U2R": 1.0
+      },
+      "n_evaluadas": 4000
+    },
+    "RNN/LSTM Nemesis (Deep Learning)": {
+      "recall": 1.0,
+      "precision": 1.0,
+      "f1": 1.0,
+      "accuracy": 1.0,
+      "recall_por_clase": {
+        "DoS": 1.0,
+        "NORMAL": 1.0,
+        "Probe": 1.0,
+        "R2L": 1.0,
+        "U2R": 1.0
+      },
+      "n_evaluadas": 3991
+    },
+    "Random Forest (Tradicional)": {
+      "recall": 1.0,
+      "precision": 1.0,
+      "f1": 1.0,
+      "accuracy": 1.0,
+      "recall_por_clase": {
+        "DoS": 1.0,
+        "NORMAL": 1.0,
+        "Probe": 1.0,
+        "R2L": 1.0,
+        "U2R": 1.0
+      },
+      "n_evaluadas": 4000
+    },
+    "Gradient Boosting (Tradicional)": {
+      "recall": 1.0,
+      "precision": 1.0,
+      "f1": 1.0,
+      "accuracy": 1.0,
+      "recall_por_clase": {
+        "DoS": 1.0,
+        "NORMAL": 1.0,
+        "Probe": 1.0,
+        "R2L": 1.0,
+        "U2R": 1.0
+      },
+      "n_evaluadas": 4000
+    },
+    "SVM (Tradicional)": {
+      "recall": 0.9988,
+      "precision": 0.9999,
+      "f1": 0.9993,
+      "accuracy": 0.9998,
+      "recall_por_clase": {
+        "DoS": 1.0,
+        "NORMAL": 1.0,
+        "Probe": 1.0,
+        "R2L": 1.0,
+        "U2R": 0.9938
+      },
+      "n_evaluadas": 4000
+    },
+    "KNN (Tradicional)": {
+      "recall": 0.9827,
+      "precision": 0.9964,
+      "f1": 0.9894,
+      "accuracy": 0.9935,
+      "recall_por_clase": {
+        "DoS": 0.9978,
+        "NORMAL": 1.0,
+        "Probe": 1.0,
+        "R2L": 0.9344,
+        "U2R": 0.9812
+      },
+      "n_evaluadas": 4000
+    }
+  },
+  "segundos_entrenamiento": {
+    "MLP Nemesis (Deep Learning)": 18.9,
+    "RNN/LSTM Nemesis (Deep Learning)": 117.3,
+    "Random Forest (Tradicional)": 2.8,
+    "Gradient Boosting (Tradicional)": 27.5,
+    "SVM (Tradicional)": 0.6,
+    "KNN (Tradicional)": 0.3
+  },
+  "nota_rnn": "Las ventanas se etiquetan con la clase del último evento (coherente con la inferencia). El dataset sintético no tiene orden temporal entre registros, así que el contexto de los 9 eventos previos no aporta información: ver 5.5."
+}

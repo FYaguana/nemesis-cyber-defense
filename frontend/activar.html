@@ -31,7 +31,7 @@
   <p>Cargando...</p>
 </div>
 <script>
-const URL_BASE_API = window.NEMESIS_API_URL || "http://localhost:8000";
+const URL_BASE_API = (typeof window.NEMESIS_API_URL !== "undefined") ? window.NEMESIS_API_URL : "http://localhost:8000";
 const params = new URLSearchParams(window.location.search);
 const token = params.get('token');
 let usuarioId = null, secreto = null;

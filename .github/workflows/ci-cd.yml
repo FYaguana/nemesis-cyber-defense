@@ -1,5 +1,11 @@
 name: CI/CD - Nemesis Cyber Defense
 
+# CI: en cada push o Pull Request se ejecuta la suite de pruebas automatizadas (pytest) y la
+#     verificación del frontend. El resultado queda visible en la pestaña Actions y en el PR,
+#     ANTES de que el cambio se integre a la rama principal.
+# CD: solo si el CI pasó y el cambio llegó a main, se construyen las imágenes Docker y se
+#     dispara el despliegue en Render.
+
 on:
   push:
     branches: [main]
@@ -9,15 +15,18 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_BACKEND: ${{ github.repository }}/nemesis-backend
-  IMAGE_FRONTEND: ${{ github.repository }}/nemesis-frontend
+  # github.repository puede tener mayúsculas (ej. FYaguana) y Docker exige minúsculas:
+  # estos sufijos se combinan en minúsculas en el job docker-build-push.
+  IMAGE_BACKEND_SUFFIX: nemesis-backend
+  IMAGE_FRONTEND_SUFFIX: nemesis-frontend
 
 jobs:
   # ---------------------------------------------------------------------
-  # 1) Verificación rápida: sintaxis Python + import check (sin instalar
-  #    tensorflow completo en cada corrida para no gastar minutos de CI).
+  # CI 1) Pruebas automatizadas del backend (pytest) sobre los módulos críticos:
+  #       autenticación, roles, motor de alertas, aprendizaje activo, dispositivos,
+  #       pipeline de datos y modelos entregados.
   # ---------------------------------------------------------------------
-  backend-lint:
+  backend-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,22 +35,23 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
 
-      - name: Instalar dependencias livianas (sin tensorflow)
+      - name: Instalar dependencias del backend
         run: |
           python -m pip install --upgrade pip
-          pip install fastapi uvicorn pyotp qrcode joblib pandas numpy scikit-learn psutil requests python-multipart flake8
+          pip install -r backend/requirements-dev.txt
 
-      - name: Chequeo de sintaxis (py_compile)
-        run: |
-          python -m compileall -q backend/app
-
-      - name: Lint (errores reales solamente, no estilo)
-        run: |
-          flake8 backend/app --count --select=E9,F63,F7,F82 --show-source --statistics
+      - name: Ejecutar la suite de pruebas (pytest)
+        working-directory: backend
+        env:
+          TF_CPP_MIN_LOG_LEVEL: "3"
+        run: python -m pytest tests -v --tb=short
 
   # ---------------------------------------------------------------------
-  # 2) Verificación del frontend: valida sintaxis JS de cada página.
+  # CI 2) Verificación del frontend: sintaxis de los .js y de los scripts
+  #       embebidos en cada página HTML.
   # ---------------------------------------------------------------------
   frontend-lint:
     runs-on: ubuntu-latest
@@ -53,19 +63,40 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Validar sintaxis JS embebido/archivos .js
+      - name: Validar sintaxis de los archivos .js
         run: |
           for f in $(find frontend -name "*.js"); do
             echo "Verificando $f"
             node --check "$f"
           done
 
+      - name: Validar sintaxis de los scripts embebidos en los HTML
+        run: |
+          python3 - <<'PY'
+          import re, subprocess, sys, tempfile, glob
+          fallos = 0
+          for html in sorted(glob.glob("frontend/*.html")):
+              texto = open(html, encoding="utf-8").read()
+              for i, bloque in enumerate(re.findall(r"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>", texto, re.S)):
+                  if not bloque.strip():
+                      continue
+                  with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False) as t:
+                      t.write(bloque)
+                  r = subprocess.run(["node", "--check", t.name], capture_output=True, text=True)
+                  if r.returncode:
+                      fallos += 1
+                      print(f"ERROR en {html} (script #{i}):\n{r.stderr}")
+                  else:
+                      print(f"OK {html} (script #{i})")
+          sys.exit(1 if fallos else 0)
+          PY
+
   # ---------------------------------------------------------------------
-  # 3) Build & push de imágenes Docker a GitHub Container Registry.
-  #    Solo en push a main (no en PRs), y solo si el lint pasó.
+  # CD 1) Build y push de las imágenes Docker a GitHub Container Registry.
+  #       Solo en push a main, y solo si TODO el CI pasó.
   # ---------------------------------------------------------------------
   docker-build-push:
-    needs: [backend-lint, frontend-lint]
+    needs: [backend-test, frontend-lint]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
@@ -73,6 +104,11 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v4
+
+      - name: Calcular nombre de imagen en minúsculas
+        run: |
+          echo "IMAGE_BACKEND=$(echo '${{ github.repository }}/${{ env.IMAGE_BACKEND_SUFFIX }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
+          echo "IMAGE_FRONTEND=$(echo '${{ github.repository }}/${{ env.IMAGE_FRONTEND_SUFFIX }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
 
       - name: Login a GHCR
         uses: docker/login-action@v3
@@ -107,10 +143,9 @@ jobs:
           cache-to: type=gha,mode=max
 
   # ---------------------------------------------------------------------
-  # 4) Deploy opcional: dispara el webhook de deploy de la plataforma
-  #    elegida (Render / Railway) DESPUÉS de que las imágenes se subieron.
-  #    Requiere el secret DEPLOY_HOOK_URL en Settings -> Secrets -> Actions.
-  #    Si no configuraste el secret, este paso se saltea solo.
+  # CD 2) Despliegue en Render. Render ya redespliega solo ante cada push (Auto-Deploy);
+  #       este paso es opcional y sirve para disparar el despliegue DESPUÉS de que el CI
+  #       pasó, si se configura el secret DEPLOY_HOOK_URL (y se desactiva el Auto-Deploy).
   # ---------------------------------------------------------------------
   deploy:
     needs: [docker-build-push]
@@ -118,10 +153,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Disparar deploy hook (si está configurado)
+        env:
+          DEPLOY_HOOK_URL: ${{ secrets.DEPLOY_HOOK_URL }}
         run: |
-          if [ -n "${{ secrets.DEPLOY_HOOK_URL }}" ]; then
-            curl -fsSL -X POST "${{ secrets.DEPLOY_HOOK_URL }}"
+          if [ -n "$DEPLOY_HOOK_URL" ]; then
+            curl -fsSL -X POST "$DEPLOY_HOOK_URL"
             echo "Deploy hook disparado."
           else
-            echo "DEPLOY_HOOK_URL no configurado; saltando deploy automático."
+            echo "DEPLOY_HOOK_URL no configurado; saltando deploy por hook."
           fi

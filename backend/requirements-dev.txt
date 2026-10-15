@@ -1,0 +1,5 @@
+# Dependencias SOLO para pruebas y regeneración de datos (no se instalan en producción).
+-r requirements.txt
+pytest>=8.0
+httpx>=0.27          # lo usa fastapi.testclient
+netaddr>=1.0         # solo para scripts/generar_tabla_oui.py

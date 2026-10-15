@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from app.motor import gestion_usuarios
-from app.nucleo.gestor_sesiones import USUARIOS_DEMO, crear_sesion
+from app.nucleo.gestor_sesiones import obtener_usuarios_demo, crear_sesion
 
 
 @dataclass(frozen=True)
@@ -27,8 +27,9 @@ class ServicioAutenticacion:
             usuario = gestion_usuarios.obtener_usuario(correo)
             return InformacionCuenta(nombre=usuario["nombre"], rol=usuario["rol"], es_cuenta_demo=False)
 
-        if correo in USUARIOS_DEMO:
-            usuario_demo = USUARIOS_DEMO[correo]
+        usuarios_demo = obtener_usuarios_demo()
+        if correo in usuarios_demo:
+            usuario_demo = usuarios_demo[correo]
             return InformacionCuenta(
                 nombre=usuario_demo["nombre"], rol=usuario_demo["rol"],
                 es_cuenta_demo=True, codigo_demo=usuario_demo["mfa_code"],
@@ -50,7 +51,9 @@ class ServicioAutenticacion:
             usuario = gestion_usuarios.obtener_usuario(correo)
             return crear_sesion(correo, {"nombre": usuario["nombre"], "rol": usuario["rol"]})
 
-        usuario_demo = USUARIOS_DEMO.get(correo)
+        usuario_demo = obtener_usuarios_demo().get(correo)
         if not usuario_demo or usuario_demo["mfa_code"] != codigo_mfa:
             return None
-        return crear_sesion(correo, usuario_demo)
+        # Marca explícita de sesión demo (y SIN el código MFA dentro del archivo de sesiones).
+        return crear_sesion(correo, {"nombre": usuario_demo["nombre"], "rol": usuario_demo["rol"],
+                                      "demo": True})

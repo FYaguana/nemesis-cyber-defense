@@ -3,9 +3,13 @@ gestor_sesiones.py -- Creación y persistencia de sesiones de usuario
 (cookie -> datos de sesión), en un archivo JSON en disco para que un
 reinicio del servidor no desloguee a todo el mundo.
 
-Incluye los usuarios DEMO de respaldo (sin contraseña, MFA fijo) para que
-nunca se pueda quedar bloqueado del sistema -- se usan para el primer
-ingreso, desde donde se invita al primer Administrador real.
+Incluye usuarios DEMO (sin contraseña, MFA fijo) SOLO para desarrollo y para
+demostraciones controladas. Están DESHABILITADOS por defecto: el código MFA fijo
+no es autenticación multifactor real (Sección 4.6 de la tesis) y, en un sistema
+expuesto a internet, la cuenta demo de Administrador daría control total a
+cualquiera que conozca el correo. Se habilitan con NEMESIS_CUENTAS_DEMO=true.
+En producción, el primer Administrador real se crea con NEMESIS_ADMIN_EMAIL
+(ver gestion_usuarios.asegurar_administrador_inicial).
 """
 
 import os
@@ -18,11 +22,20 @@ RUTA_SESIONES = os.path.join(DIRECTORIO_BACKEND, "data", "sesiones.json")
 
 DURACION_SESION_HORAS = 8
 
-USUARIOS_DEMO = {
+_USUARIOS_DEMO = {
     "admin@nemesis.ec":    {"nombre": "Admin Nemesis", "rol": "Administrador", "mfa_code": "123456"},
     "tanya@nemesis.ec":    {"nombre": "Tanya Vaca",    "rol": "Analista SOC",  "mfa_code": "654321"},
     "fernando@nemesis.ec": {"nombre": "Fernando Y.",   "rol": "Analista SOC",  "mfa_code": "112233"},
 }
+
+
+def cuentas_demo_habilitadas() -> bool:
+    """Las cuentas demo solo existen si NEMESIS_CUENTAS_DEMO=true (default: apagado)."""
+    return os.environ.get("NEMESIS_CUENTAS_DEMO", "false").strip().lower() == "true"
+
+
+def obtener_usuarios_demo() -> dict:
+    return _USUARIOS_DEMO if cuentas_demo_habilitadas() else {}
 
 
 def _cargar_sesiones() -> dict:

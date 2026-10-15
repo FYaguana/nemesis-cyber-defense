@@ -309,64 +309,20 @@ class ProcesadorNemesis:
         ]
 
     def generar_trafico_demo(self, tipo: str = "aleatorio") -> dict:
-        """Genera una muestra de tráfico de red para demostración."""
-        np.random.seed()
+        """Muestra de tráfico para los botones de simulación del dashboard.
 
-        base = {
-            "duration": np.random.exponential(5),
-            "protocol_type": np.random.choice(["tcp", "udp", "icmp"]),
-            "service": np.random.choice(["http", "ftp", "smtp", "ssh", "dns"]),
-            "flag": "SF",
-            "src_bytes": 1024.0,
-            "dst_bytes": 4096.0,
-            "land": 0, "wrong_fragment": 0, "urgent": 0, "hot": 1,
-            "num_failed_logins": 0, "logged_in": 1, "num_compromised": 0,
-            "root_shell": 0, "su_attempted": 0, "num_root": 0,
-            "num_file_creations": 0, "num_shells": 0, "num_access_files": 1,
-            "num_outbound_cmds": 0, "is_host_login": 0, "is_guest_login": 0,
-            "count": float(np.random.randint(10, 100)),
-            "srv_count": float(np.random.randint(10, 80)),
-            "serror_rate": 0.02, "srv_serror_rate": 0.01,
-            "rerror_rate": 0.01, "srv_rerror_rate": 0.01,
-            "same_srv_rate": 0.9, "diff_srv_rate": 0.05,
-            "srv_diff_host_rate": 0.1,
-            "dst_host_count": float(np.random.randint(20, 100)),
-            "dst_host_srv_count": float(np.random.randint(20, 80)),
-            "dst_host_same_srv_rate": 0.8, "dst_host_diff_srv_rate": 0.05,
-            "dst_host_same_src_port_rate": 0.5, "dst_host_srv_diff_host_rate": 0.1,
-            "dst_host_serror_rate": 0.02, "dst_host_srv_serror_rate": 0.01,
-            "dst_host_rerror_rate": 0.01, "dst_host_srv_rerror_rate": 0.01,
-        }
-
-        if tipo == "dos":
-            base.update({
-                "src_bytes": float(np.random.randint(50000, 200000)),
-                "count": float(np.random.randint(450, 511)),
-                "serror_rate": float(np.random.uniform(0.7, 1.0)),
-                "flag": "S0",
-                "duration": 0.1,
-            })
-        elif tipo == "probe":
-            base.update({
-                "dst_host_count": float(np.random.randint(220, 255)),
-                "diff_srv_rate": float(np.random.uniform(0.6, 0.9)),
-                "logged_in": 0,
-                "srv_diff_host_rate": float(np.random.uniform(0.5, 0.9)),
-            })
-        elif tipo == "r2l":
-            base.update({
-                "num_failed_logins": float(np.random.randint(10, 30)),
-                "logged_in": 0,
-                "hot": float(np.random.randint(10, 40)),
-            })
-        elif tipo == "u2r":
-            base.update({
-                "root_shell": 1,
-                "num_root": float(np.random.randint(5, 20)),
-                "num_compromised": float(np.random.randint(3, 15)),
-            })
-
-        return base
+        Se genera con el MISMO perfil estadístico por clase que el dataset con el que se
+        entrenaron los modelos (generador_dataset_base, calibrado según Tavallaee et al.,
+        2009). Antes usaba perfiles propios, calibrados para un dataset anterior, y tras
+        reentrenar con NSL_KDD_train.csv el modelo ya no reconocía el 'DoS' simulado."""
+        from app.motor.generador_dataset_base import _generar_clase
+        clases = {"normal": "NORMAL", "dos": "DoS", "probe": "Probe", "r2l": "R2L", "u2r": "U2R"}
+        rng = np.random.default_rng()
+        if tipo not in clases:  # "aleatorio" o cualquier valor desconocido
+            tipo = str(rng.choice(list(clases)))
+        fila = _generar_clase(clases[tipo], 1, rng).iloc[0].to_dict()
+        fila.pop("label", None)
+        return {k: (v.item() if hasattr(v, "item") else v) for k, v in fila.items()}
 
 
 # Instancia global del procesador

@@ -105,12 +105,22 @@ def construir_rnn(n_features: int, n_clases: int,
 
 def crear_ventanas_temporales(X: np.ndarray, y: np.ndarray,
                                window_size: int = 10) -> tuple:
-    """Crea secuencias deslizantes (Sección 3.2.4 – Windowing)."""
-    X_seq, y_seq = [], []
-    for i in range(len(X) - window_size):
-        X_seq.append(X[i:i + window_size])
-        y_seq.append(y[i + window_size])
-    return np.array(X_seq, dtype=np.float32), np.array(y_seq)
+    """Crea secuencias deslizantes (Sección 3.2.4 – Windowing).
+
+    Cada ventana contiene `window_size` eventos consecutivos y su etiqueta es la clase
+    del ÚLTIMO evento de la ventana (el más reciente), que es exactamente como el motor de
+    inferencia usa el RNN (procesador_nemesis.analizar_trafico): se agrega el evento actual
+    al buffer, se toman los últimos `window_size` y se clasifica el evento actual con los
+    9 anteriores como contexto.
+
+    Antes la etiqueta era la del evento SIGUIENTE a la ventana. Eso desalineaba
+    entrenamiento e inferencia y, como los registros del dataset sintético están mezclados
+    al azar (no hay relación temporal entre filas), el modelo no tenía nada que aprender:
+    colapsaba a predecir siempre NORMAL (Recall macro = 0.20 con 5 clases)."""
+    if len(X) < window_size:
+        raise ValueError(f"Se necesitan al menos {window_size} eventos para formar una ventana.")
+    ventanas = np.lib.stride_tricks.sliding_window_view(X, (window_size, X.shape[1]))[:, 0]
+    return np.ascontiguousarray(ventanas, dtype=np.float32), np.asarray(y)[window_size - 1:]
 
 
 # ══════════════════════════════════════════════════════════════════

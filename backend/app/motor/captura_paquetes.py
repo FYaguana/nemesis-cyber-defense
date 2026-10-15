@@ -38,7 +38,7 @@ from collections import defaultdict, deque
 from datetime import datetime
 
 import joblib
-from scapy.all import sniff, IP, TCP, UDP, ICMP
+from scapy.all import sniff, IP, TCP, UDP, ICMP, Ether
 
 # backend/app/motor/captura_paquetes.py -> subir 3 niveles llega a backend/
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -109,6 +109,7 @@ class AgregadorFlujos:
             "protocol_type": None, "service": None,
             "flag": "SF",  # SF = "conexión establecida normal", el default más razonable
             "land": 0,
+            "src_mac": None,  # MAC del equipo que originó el flujo (para identificar el fabricante por OUI)
         })
         self.historial_srv = deque(maxlen=200)  # para same_srv_rate / diff_srv_rate
 
@@ -127,6 +128,9 @@ class AgregadorFlujos:
         ahora = time.time()
         if f["inicio"] is None:
             f["inicio"] = ahora
+            # Capa Ethernet: MAC de origen del primer paquete del flujo (si la captura la incluye).
+            if Ether in pkt:
+                f["src_mac"] = pkt[Ether].src
         f["fin"] = ahora
         f["protocol_type"] = proto
         f["service"] = resolver_service(dport)
@@ -168,6 +172,7 @@ class AgregadorFlujos:
                 "timestamp": datetime.now().isoformat(),
                 "src_ip": clave[0], "dst_ip": clave[1],
                 "src_port": clave[2], "dst_port": clave[3],
+                "src_mac": f["src_mac"],
                 "duration": duracion,
                 "protocol_type": f["protocol_type"],
                 "service": f["service"],
@@ -264,7 +269,7 @@ def main():
     args = parser.parse_args()
 
     columnas = [
-        "timestamp", "src_ip", "dst_ip", "src_port", "dst_port", "duration",
+        "timestamp", "src_ip", "dst_ip", "src_port", "dst_port", "src_mac", "duration",
         "protocol_type", "service", "flag", "src_bytes", "dst_bytes", "land",
         "count", "srv_count", "same_srv_rate", "diff_srv_rate",
         "num_failed_logins", "root_shell", "logged_in",

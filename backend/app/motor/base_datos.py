@@ -131,6 +131,18 @@ def init_db():
         etiquetado_por        TEXT
     )""")
 
+    # Migración segura: metadatos del flujo (para el panel de validación con
+    # tráfico real y la identificación de dispositivo) y el ORIGEN de la
+    # captura ('scapy' = paquetes reales; 'psutil' = modo sin Npcap, con
+    # bytes/flags aproximados, que NO se usa para reentrenar por defecto).
+    cursor.execute("PRAGMA table_info(capturas_reales)")
+    cols_cap = {fila[1] for fila in cursor.fetchall()}
+    for columna, ddl in (("flujo_json", "TEXT"), ("dispositivo", "TEXT"),
+                         ("origen", "TEXT DEFAULT 'scapy'")):
+        if columna not in cols_cap:
+            cursor.execute(f"ALTER TABLE capturas_reales ADD COLUMN {columna} {ddl}")
+            logger.info("Migración aplicada: columna '%s' agregada a 'capturas_reales'.", columna)
+
     conn.commit()
     conn.close()
     logger.info(f"Base de datos inicializada: {DB_PATH}")
@@ -412,13 +424,21 @@ def marcar_feedback(alerta_id: int, es_falso_positivo: bool):
 
 # ─── Capturas reales para etiquetado humano y reentrenamiento ───────────────
 
-def guardar_captura_real(features: dict, prediccion_clase: str, prediccion_confianza: float) -> int:
+def guardar_captura_real(features: dict, prediccion_clase: str, prediccion_confianza: float,
+                         flujo: dict = None, dispositivo: str = None, origen: str = "scapy") -> int:
+    """Etapa 1 del aprendizaje activo (Sección 4.2 de la tesis): CADA flujo real
+    analizado se almacena junto con la predicción del modelo, sin etiqueta de
+    verdad todavía. 'flujo' guarda los metadatos (IPs, puertos) y 'origen'
+    distingue la captura por paquetes (scapy) del modo sin Npcap (psutil)."""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
-        INSERT INTO capturas_reales (timestamp, features_json, prediccion_clase, prediccion_confianza)
-        VALUES (?, ?, ?, ?)
-    """, (datetime.now().isoformat(), json.dumps(features), prediccion_clase, prediccion_confianza))
+        INSERT INTO capturas_reales
+            (timestamp, features_json, prediccion_clase, prediccion_confianza,
+             flujo_json, dispositivo, origen)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (datetime.now().isoformat(), json.dumps(features), prediccion_clase,
+          prediccion_confianza, json.dumps(flujo) if flujo else None, dispositivo, origen))
     row_id = cursor.lastrowid
     conn.commit()
     conn.close()
@@ -436,12 +456,19 @@ def etiquetar_captura(captura_id: int, etiqueta: str, usuario_email: str):
     conn.close()
 
 
-def obtener_capturas_etiquetadas() -> list:
+def obtener_capturas_etiquetadas(incluir_aproximadas: bool = False) -> list:
+    """Muestras reales con etiqueta humana, listas para reentrenar.
+
+    Por defecto se EXCLUYEN las capturas del modo psutil: sus bytes y banderas
+    son aproximaciones agregadas (no observación de paquetes), y mezclarlas
+    con el NSL-KDD contaminaría el entrenamiento. Las filas anteriores a la
+    columna 'origen' (NULL) se tratan como capturas por paquetes (scapy)."""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute("""
+    filtro = "" if incluir_aproximadas else "AND COALESCE(origen, 'scapy') != 'psutil'"
+    cursor.execute(f"""
         SELECT features_json, etiqueta_humana FROM capturas_reales
-        WHERE etiqueta_humana IS NOT NULL
+        WHERE etiqueta_humana IS NOT NULL {filtro}
     """)
     rows = cursor.fetchall()
     conn.close()
@@ -470,6 +497,93 @@ def contar_capturas() -> dict:
     por_clase = {clase: n for clase, n in cursor.fetchall()}
     conn.close()
     return {"total": total, "etiquetadas": etiquetadas, "por_clase": por_clase}
+
+
+def purgar_capturas_no_etiquetadas(max_filas: int = 50000) -> int:
+    """Mantiene acotada la tabla de capturas: conserva SIEMPRE las etiquetadas por un analista
+    (son el insumo del reentrenamiento) y solo las 'max_filas' más recientes sin etiquetar."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        DELETE FROM capturas_reales
+        WHERE etiqueta_humana IS NULL AND id NOT IN (
+            SELECT id FROM capturas_reales WHERE etiqueta_humana IS NULL
+            ORDER BY id DESC LIMIT ?)
+    """, (max_filas,))
+    borradas = cursor.rowcount
+    conn.commit()
+    conn.close()
+    return borradas
+
+
+def obtener_resumen_validacion(minutos_bucket: int = 1) -> dict:
+    """Resumen CUANTITATIVO de la validación con tráfico real (Sección 5.3).
+
+    La tesis reconoce que no se registró el total de conexiones, la duración
+    de la captura ni el número de dispositivos. Este resumen lo calcula desde
+    las capturas persistidas (etapa 1 del aprendizaje activo): totales,
+    duración, distribución por clase, serie temporal (para graficar los picos)
+    y, si hay etiquetas humanas, una matriz de verdad de terreno parcial."""
+    from collections import Counter, defaultdict
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT timestamp, prediccion_clase, etiqueta_humana, flujo_json, dispositivo,
+               COALESCE(origen, 'scapy')
+        FROM capturas_reales ORDER BY timestamp ASC
+    """)
+    filas = cursor.fetchall()
+    conn.close()
+
+    total = len(filas)
+    if total == 0:
+        return {"total_flujos": 0, "mensaje": "Aún no hay capturas de red real registradas."}
+
+    por_clase = Counter(f[1] for f in filas)
+    destinos, dispositivos, origenes = set(), set(), Counter(f[5] for f in filas)
+    serie = defaultdict(lambda: {"total": 0, "no_normal": 0})
+    for ts, clase, _etq, flujo_json, disp, _orig in filas:
+        try:
+            clave = datetime.fromisoformat(ts).replace(second=0, microsecond=0)
+            clave = clave.replace(minute=(clave.minute // minutos_bucket) * minutos_bucket)
+            etiqueta_t = clave.isoformat(timespec="minutes")
+        except ValueError:
+            continue
+        serie[etiqueta_t]["total"] += 1
+        if clase != "NORMAL":
+            serie[etiqueta_t]["no_normal"] += 1
+        if flujo_json:
+            try:
+                destinos.add(json.loads(flujo_json).get("dst_ip"))
+            except Exception:
+                pass
+        if disp and "no identificado" not in disp:
+            dispositivos.add(disp)
+
+    inicio, fin = datetime.fromisoformat(filas[0][0]), datetime.fromisoformat(filas[-1][0])
+    etiquetadas = [f for f in filas if f[2] is not None]
+    verdad = None
+    if etiquetadas:
+        vp = sum(1 for f in etiquetadas if f[1] != "NORMAL" and f[2] != "NORMAL")
+        fp = sum(1 for f in etiquetadas if f[1] != "NORMAL" and f[2] == "NORMAL")
+        vn = sum(1 for f in etiquetadas if f[1] == "NORMAL" and f[2] == "NORMAL")
+        fn = sum(1 for f in etiquetadas if f[1] == "NORMAL" and f[2] != "NORMAL")
+        verdad = {"muestras_etiquetadas": len(etiquetadas), "vp": vp, "fp": fp, "vn": vn, "fn": fn,
+                  "precision": round(vp / (vp + fp), 4) if (vp + fp) else None,
+                  "recall": round(vp / (vp + fn), 4) if (vp + fn) else None}
+    return {
+        "total_flujos": total,
+        "inicio": inicio.isoformat(timespec="seconds"),
+        "fin": fin.isoformat(timespec="seconds"),
+        "duracion_minutos": round((fin - inicio).total_seconds() / 60, 2),
+        "dispositivos_identificados_distintos": len(dispositivos),
+        "destinos_distintos": len({d for d in destinos if d}),
+        "origen_de_capturas": dict(origenes),
+        "distribucion_por_clase": dict(por_clase),
+        "porcentaje_normal": round(100 * por_clase.get("NORMAL", 0) / total, 2),
+        "serie_temporal": [{"minuto": k, **v} for k, v in sorted(serie.items())],
+        "verdad_de_terreno_parcial": verdad,
+    }
 
 
 if __name__ == "__main__":

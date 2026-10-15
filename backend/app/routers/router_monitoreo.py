@@ -19,12 +19,15 @@ async def iniciar_monitoreo(peticion: Request):
     cuerpo = await peticion.json()
     interfaz = (cuerpo.get("iface") or "").strip() or None
     ventana_segundos = int(cuerpo.get("ventana", 5))
-    # "psutil" (default, sin Npcap) o "scapy" (captura real, requiere Npcap en Windows)
-    backend = (cuerpo.get("backend") or "psutil").strip().lower()
+    # "auto" (default): Scapy si puede capturar en este equipo, si no el respaldo psutil (sin Npcap).
+    # "scapy": captura real de paquetes (Npcap en Windows). "psutil": respaldo, precisión reducida.
+    backend = (cuerpo.get("backend") or "auto").strip().lower()
+    if backend not in ("auto", "scapy", "psutil"):
+        raise HTTPException(400, "backend inválido: usá 'auto', 'scapy' o 'psutil'.")
 
     gestor = obtener_gestor_captura()
     ok, mensaje = gestor.iniciar_continuo(interfaz, ventana_segundos, backend)
-    return {"ok": ok, "mensaje": mensaje, "backend": backend}
+    return {"ok": ok, "mensaje": mensaje, "backend": gestor.backend_actual if ok else backend}
 
 
 @enrutador.get("/dispositivos")

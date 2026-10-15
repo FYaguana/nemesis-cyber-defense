@@ -31,18 +31,39 @@ async def ciclo_de_vida(aplicacion: FastAPI):
     """Reemplaza el patrón deprecado @app.on_event('startup'). Corre una
     vez al arrancar el servidor, antes de aceptar el primer request."""
     from app.motor.base_datos import init_db
+    from app.nucleo.configuracion import URL_FRONTEND
+    from app.nucleo.gestor_sesiones import cuentas_demo_habilitadas
     init_db()
     logger.info("Base de datos inicializada.")
 
+    if cuentas_demo_habilitadas():
+        logger.warning("ATENCIÓN: NEMESIS_CUENTAS_DEMO=true. Las cuentas demo (código MFA fijo, "
+                       "sin contraseña) están HABILITADAS. Usarlas solo en desarrollo o en una "
+                       "demostración controlada; NO dejarlas activas en un sistema expuesto a internet.")
+
+    # Primer Administrador real (reemplaza a la cuenta demo en producción).
+    correo_admin = os.environ.get("NEMESIS_ADMIN_EMAIL", "").strip()
+    if correo_admin:
+        try:
+            from app.motor.gestion_usuarios import asegurar_administrador_inicial
+            asegurar_administrador_inicial(
+                correo_admin, os.environ.get("NEMESIS_ADMIN_NOMBRE", "Administrador"), URL_FRONTEND)
+        except Exception as error:
+            logger.error("No se pudo preparar el administrador inicial: %s", error)
+
     try:
-        from app.motor.captura_red import obtener_gestor_captura
-        gestor = obtener_gestor_captura()
-        ok, mensaje = gestor.iniciar_continuo()
-        if ok:
-            logger.info("Monitoreo de red real iniciado automáticamente (%s)", mensaje)
+        from app.motor.captura_red import obtener_gestor_captura, _autoinicio_habilitado
+        if _autoinicio_habilitado():
+            gestor = obtener_gestor_captura()
+            ok, mensaje = gestor.iniciar_continuo()
+            if ok:
+                logger.info("Monitoreo de red real iniciado automáticamente (backend=%s)", gestor.backend_actual)
+            else:
+                logger.warning("Monitoreo de red real no se pudo iniciar automáticamente: %s", mensaje)
+                logger.warning("Configuralo una vez desde el panel de Monitoreo de Red.")
         else:
-            logger.warning("Monitoreo de red real no se pudo iniciar automáticamente: %s", mensaje)
-            logger.warning("Configuralo una vez desde el panel de Monitoreo de Red.")
+            logger.info("Autoinicio del monitoreo DESACTIVADO (entorno cloud o NEMESIS_MONITOREO_AUTOINICIO=false): "
+                        "un contenedor en la nube solo vería su propia red interna. Iniciarlo manualmente si se desea.")
     except Exception as error:
         logger.warning("Aviso: el monitoreo automático no se pudo iniciar (%s). "
                         "El resto del sistema funciona con normalidad.", error)
