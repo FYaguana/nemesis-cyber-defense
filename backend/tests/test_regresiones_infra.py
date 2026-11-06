@@ -78,3 +78,11 @@ def test_dashboard_etiqueta_la_alerta_correcta_aunque_la_lista_este_filtrada():
     assert "f.map(a=>alHTML(a,alertas.indexOf(a)))" in html
     assert "alertas.slice(0,5).map(a=>alHTML(a,alertas.indexOf(a)))" in html
     assert "verPlanIA" in html and "tiempo_respuesta_objetivo" in html
+
+
+def test_el_rotulo_de_origen_del_plan_usa_los_campos_que_envia_el_backend():
+    """Regresion: el dashboard leia rec._ia_meta (que el backend nunca envia) y rotulaba SIEMPRE el plan
+    como 'plantilla', incluso cuando lo habia generado la IA (Seccion 4.8: trazabilidad del origen)."""
+    html = leer("frontend", "dashboard.html")
+    assert "rec.generado_por_ia" in html and "rec.motivo_uso_plantilla" in html
+    assert "rec._ia_meta ||" not in html

@@ -19,8 +19,12 @@ class RespuestaFalsa:
     def __init__(self, status=200, lineas=(), texto=""):
         self.status_code, self._lineas, self.text = status, lineas, texto
 
-    def iter_lines(self, decode_unicode=True):
-        yield from self._lineas
+    def iter_lines(self, decode_unicode=False):
+        # Igual que `requests` con text/event-stream sin charset: bytes UTF-8 reales y, si se pide
+        # decode_unicode, los decodifica como ISO-8859-1 (origen del error de los acentos rotos).
+        for linea in self._lineas:
+            crudo = linea.encode("utf-8")
+            yield crudo.decode("latin-1") if decode_unicode else crudo
 
 
 def evento(texto):
@@ -59,6 +63,20 @@ def test_una_respuesta_de_error_tampoco_filtra_la_clave(monkeypatch, caplog):
         with pytest.raises(cg.ErrorClienteGemini) as e:
             list(cg.ClienteGemini(CLAVE).generar_contenido_en_streaming("p"))
     assert e.value.es_error_autenticacion and CLAVE not in caplog.text
+
+
+def test_los_acentos_de_la_respuesta_de_gemini_no_se_corrompen(monkeypatch):
+    """Regresión: el plan de la IA llegaba como 'ContenciÃ³n' y 'trÃ¡fico'."""
+    monkeypatch.setattr(cg.requests, "post", lambda *a, **k: RespuestaFalsa(lineas=[evento("Contención y tráfico, MÁXIMA ñ")]))
+    assert list(cg.ClienteGemini(CLAVE).generar_contenido_en_streaming("p")) == ["Contención y tráfico, MÁXIMA ñ"]
+
+
+def test_el_plan_de_la_ia_informa_el_modelo_que_lo_genero(monkeypatch):
+    ok = json.dumps({"pasos": [{"titulo": "a", "detalle": "b"}], "tiempo_respuesta": "t", "prioridad": "BAJA",
+                     "color_prioridad": "#fff", "referencia_nist": "n"})
+    p = plan_final(servicio(texto_ia=ok, monkeypatch=monkeypatch))
+    assert p.generado_por_ia is True and p.modelo_ia == cg.MODELO_GEMINI
+    assert plan_final(servicio(clave=None)).modelo_ia is None
 
 
 def test_el_modelo_de_gemini_se_puede_cambiar_por_entorno(monkeypatch):

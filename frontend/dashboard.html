@@ -1349,10 +1349,13 @@ async function genRec(tipo){
 }
 
 function renderRec(clase,rec){
-  const meta = rec._ia_meta || {modo:'fallback'};
+  // Origen del plan según lo que envía el backend (generado_por_ia / motivo_uso_plantilla / modelo_ia).
+  const meta = rec.generado_por_ia
+    ? {modo:'ia', modelo: rec.modelo_ia || 'Gemini'}
+    : {modo:'fallback', motivo: rec.motivo_uso_plantilla};
   const footerIA = meta.modo === 'ia'
     ? `<div style="margin-top:6px;font-size:.68rem;color:#00ff88">
-         🤖 Generado en tiempo real por Google Gemini (${meta.modelo}) · ${meta.tokens_entrada}+${meta.tokens_salida} tokens
+         🤖 Generado en tiempo real por Google Gemini (${meta.modelo})
        </div>`
     : `<div style="margin-top:6px;font-size:.68rem;color:#ffaa00">
          📋 Plan de referencia (plantilla) — ${meta.motivo || 'la IA no está configurada'}.

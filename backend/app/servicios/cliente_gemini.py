@@ -89,7 +89,11 @@ class ClienteGemini:
 
     def _leer_eventos_sse(self, respuesta: requests.Response) -> Iterator[str]:
         texto_acumulado = ""
-        for linea in respuesta.iter_lines(decode_unicode=True):
+        # Se leen BYTES y se decodifican como UTF-8 a mano: con decode_unicode=True, `requests` asume
+        # ISO-8859-1 para respuestas text/* sin charset (el caso de text/event-stream) y todos los
+        # acentos llegaban rotos ("ContenciÃ³n").
+        for linea_cruda in respuesta.iter_lines():
+            linea = linea_cruda.decode("utf-8", errors="replace") if isinstance(linea_cruda, bytes) else linea_cruda
             if not linea or not linea.startswith("data: "):
                 continue
             fragmento_json = linea[len("data: "):]

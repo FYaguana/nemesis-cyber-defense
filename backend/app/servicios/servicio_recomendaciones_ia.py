@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from typing import Iterator, Optional
 
 from app.nucleo.limitador_tasa import LimitadorTasa
-from app.servicios.cliente_gemini import ClienteGemini, ErrorClienteGemini
+from app.servicios.cliente_gemini import ClienteGemini, ErrorClienteGemini, MODELO_GEMINI
 
 logger = logging.getLogger("nemesis.servicio_recomendaciones_ia")
 
@@ -54,6 +54,7 @@ class PlanRespuestaIncidente:
     referencia_nist: str
     generado_por_ia: bool
     motivo_uso_plantilla: Optional[str] = None
+    modelo_ia: Optional[str] = None   # modelo que generó el plan (None si viene de la plantilla)
 
 
 class ServicioRecomendacionesIA:
@@ -111,7 +112,7 @@ class ServicioRecomendacionesIA:
             return
 
         plan_extraido = self._limpiar_marcado_del_plan(plan_extraido)
-        yield PlanRespuestaIncidente(**plan_extraido, generado_por_ia=True)
+        yield PlanRespuestaIncidente(**plan_extraido, generado_por_ia=True, modelo_ia=MODELO_GEMINI)
 
     def _construir_prompt(self, deteccion: DeteccionParaAnalizar) -> str:
         texto_features = self._formatear_features(deteccion.features_influyentes)
