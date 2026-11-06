@@ -10,6 +10,7 @@ directamente -- eso se delega a ClienteGemini y al router.
 
 import json
 import logging
+import re
 from dataclasses import dataclass
 from typing import Iterator, Optional
 
@@ -109,6 +110,7 @@ class ServicioRecomendacionesIA:
             yield self._plan_de_referencia(deteccion, "La IA respondió en un formato inesperado.")
             return
 
+        plan_extraido = self._limpiar_marcado_del_plan(plan_extraido)
         yield PlanRespuestaIncidente(**plan_extraido, generado_por_ia=True)
 
     def _construir_prompt(self, deteccion: DeteccionParaAnalizar) -> str:
@@ -116,7 +118,7 @@ class ServicioRecomendacionesIA:
         texto_alertas = self._formatear_alertas_recientes(deteccion.alertas_recientes)
 
         return f"""Eres el asistente de un centro de operaciones de seguridad (SOC) de una empresa.
-Un sistema de detección de intrusiones basado en redes neuronales (MLP + RNN, entrenado con NSL-KDD)
+Un sistema de detección de intrusiones basado en redes neuronales (MLP + RNN, entrenado con un dataset sintético calibrado en las proporciones de clase del NSL-KDD)
 acaba de clasificar una conexión de red con el siguiente resultado:
 
 - Clase detectada: {deteccion.clase}
@@ -129,7 +131,7 @@ Features más influyentes en la decisión del modelo:
 Últimas alertas registradas en el sistema (contexto reciente, más nueva primero):
 {texto_alertas}
 
-Genera un plan de respuesta a incidentes accionable, basado en las fases de NIST SP 800-61r2
+Genera un plan de respuesta a incidentes accionable, basado en las cuatro fases del ciclo de vida de NIST SP 800-61 Rev. 2
 (Preparación, Detección y Análisis, Contención/Erradicación/Recuperación, Actividad Post-Incidente),
 adaptado específicamente a este caso y considerando el contexto reciente de alertas.
 
@@ -195,6 +197,35 @@ El arreglo "pasos" debe tener entre {CANTIDAD_MINIMA_PASOS} y {CANTIDAD_MAXIMA_P
             except json.JSONDecodeError:
                 pass
         return None
+
+    # Sección 3.9: la restricción de formato "sin marcado" se VERIFICA antes de mostrar la respuesta.
+    # El prompt ya lo exige; esto garantiza que, si el modelo igualmente devuelve Markdown, los
+    # caracteres de marcado no aparezcan literales en la interfaz.
+    _PATRONES_MARKDOWN = (
+        (re.compile(r"```+[a-zA-Z]*"), ""),                    # bloques de código
+        (re.compile(r"`([^`]*)`"), r"\1"),                     # código en línea
+        (re.compile(r"(\*\*|__)(.+?)\1"), r"\2"),              # **negrita** / __negrita__
+        (re.compile(r"(?<![\w*])\*(?!\s)([^*\n]+?)\*(?![\w*])"), r"\1"),  # *cursiva*
+        (re.compile(r"^\s{0,3}#{1,6}\s+", re.MULTILINE), ""),   # encabezados #
+        (re.compile(r"^\s*[-*•]\s+", re.MULTILINE), ""),         # viñetas
+    )
+
+    @classmethod
+    def _quitar_marcado(cls, texto):
+        if not isinstance(texto, str):
+            return texto
+        for patron, reemplazo in cls._PATRONES_MARKDOWN:
+            texto = patron.sub(reemplazo, texto)
+        return texto.strip()
+
+    def _limpiar_marcado_del_plan(self, plan: dict) -> dict:
+        limpio = dict(plan)
+        limpio["pasos"] = [
+            {**paso, "titulo": self._quitar_marcado(paso.get("titulo")),
+             "detalle": self._quitar_marcado(paso.get("detalle"))}
+            for paso in plan["pasos"]
+        ]
+        return limpio
 
     def _validar_forma_del_plan(self, plan: dict) -> bool:
         if not isinstance(plan, dict):

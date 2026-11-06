@@ -38,7 +38,7 @@ from collections import defaultdict, deque
 from datetime import datetime
 
 import joblib
-from scapy.all import sniff, IP, TCP, UDP, ICMP
+from scapy.all import sniff, IP, TCP, UDP, ICMP, Ether
 
 # backend/app/motor/captura_paquetes.py -> subir 3 niveles llega a backend/
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -109,6 +109,7 @@ class AgregadorFlujos:
             "protocol_type": None, "service": None,
             "flag": "SF",  # SF = "conexión establecida normal", el default más razonable
             "land": 0,
+            "src_mac": None,  # MAC del equipo que originó el flujo (para identificar el fabricante por OUI)
         })
         self.historial_srv = deque(maxlen=200)  # para same_srv_rate / diff_srv_rate
 
@@ -127,6 +128,9 @@ class AgregadorFlujos:
         ahora = time.time()
         if f["inicio"] is None:
             f["inicio"] = ahora
+            # Capa Ethernet: MAC de origen del primer paquete del flujo (si la captura la incluye).
+            if Ether in pkt:
+                f["src_mac"] = pkt[Ether].src
         f["fin"] = ahora
         f["protocol_type"] = proto
         f["service"] = resolver_service(dport)
@@ -168,6 +172,7 @@ class AgregadorFlujos:
                 "timestamp": datetime.now().isoformat(),
                 "src_ip": clave[0], "dst_ip": clave[1],
                 "src_port": clave[2], "dst_port": clave[3],
+                "src_mac": f["src_mac"],
                 "duration": duracion,
                 "protocol_type": f["protocol_type"],
                 "service": f["service"],
@@ -197,7 +202,7 @@ def transformar_con_modelo_real(csv_captura, salida_npy=None):
     """
     Toma el CSV crudo generado por el sniffer y lo deja listo para el modelo,
     usando los MISMOS encoders.pkl y scaler.pkl con los que se entrenó
-    (equivalente a transformar_features(df, fit=False) de limpieza.py).
+    (equivalente a transformar_features(df, fit=False) de preparacion_datos.py).
 
     Columnas del NSL-KDD que NO son derivables de la captura de paquetes
     (num_compromised, root_shell, su_attempted, num_root, num_shells,
@@ -208,40 +213,14 @@ def transformar_con_modelo_real(csv_captura, salida_npy=None):
     import numpy as np
     import pandas as pd
 
-    # Import local: limpieza.py vive en el mismo directorio (src/)
-    from app.motor.preparacion_datos import COLUMNAS_BASE, COLUMNAS_NUMERICAS, COLUMNAS_CATEGORICAS
+    # Misma función que usa la inferencia en vivo: orden de columnas del entrenamiento y
+    # variables no derivables de la red completadas con 0 (sin aproximarlas).
+    from app.motor.preparacion_datos import vectorizar_muestras
 
     df_captura = pd.read_csv(csv_captura)
-
-    # Armar DataFrame con TODAS las columnas que espera el modelo,
-    # en el mismo orden que COLUMNAS_BASE (sin "label", que no aplica aquí).
-    df_modelo = pd.DataFrame()
-    for col in COLUMNAS_BASE:
-        if col == "label":
-            continue
-        if col in df_captura.columns:
-            df_modelo[col] = df_captura[col]
-        else:
-            df_modelo[col] = 0  # placeholder documentado: no derivable de la red
-
     encoders = joblib.load(os.path.join(MODELS_DIR, "encoders.pkl"))
     scaler = joblib.load(os.path.join(MODELS_DIR, "scaler.pkl"))
-
-    # Encoding categórico idéntico al "else" de transformar_features en limpieza.py
-    for col in COLUMNAS_CATEGORICAS:
-        le = encoders[col]
-        df_modelo[col] = df_modelo[col].astype(str).apply(
-            lambda x: le.transform([x])[0] if x in le.classes_ else 0
-        )
-
-    # Mismo feature engineering que limpieza.py
-    df_modelo["ratio_src_dst"] = df_modelo["src_bytes"] / (df_modelo["dst_bytes"] + 1)
-    df_modelo["tasa_errores"] = df_modelo["serror_rate"] + df_modelo["rerror_rate"]
-    df_modelo["intentos_fallo_norm"] = df_modelo["num_failed_logins"] / (df_modelo["count"] + 1)
-    df_modelo["actividad_root"] = df_modelo["root_shell"] + df_modelo["num_root"] + df_modelo["num_compromised"]
-
-    X = df_modelo.values.astype(np.float32)
-    X_scaled = scaler.transform(X)
+    X_scaled = vectorizar_muestras(df_captura, scaler, encoders)
 
     logger.info("Transformación completa: %s filas, %s features -> listo para el modelo",
                 X_scaled.shape[0], X_scaled.shape[1])
@@ -264,7 +243,7 @@ def main():
     args = parser.parse_args()
 
     columnas = [
-        "timestamp", "src_ip", "dst_ip", "src_port", "dst_port", "duration",
+        "timestamp", "src_ip", "dst_ip", "src_port", "dst_port", "src_mac", "duration",
         "protocol_type", "service", "flag", "src_bytes", "dst_bytes", "land",
         "count", "srv_count", "same_srv_rate", "diff_srv_rate",
         "num_failed_logins", "root_shell", "logged_in",

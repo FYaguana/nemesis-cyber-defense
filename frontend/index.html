@@ -187,7 +187,7 @@ input:focus{border-color:#00d4ff;box-shadow:0 0 0 3px rgba(0,212,255,.1)}
   <div class="sec">🔒 Conexión TLS 1.3 · Zero Trust · MFA</div>
 </div>
 <script>
-const URL_BASE_API = window.NEMESIS_API_URL || "http://localhost:8000";
+const URL_BASE_API = (typeof window.NEMESIS_API_URL !== "undefined") ? window.NEMESIS_API_URL : "http://localhost:8000";
 let em='',usr=null;
 // MFA inputs
 const row=document.getElementById('mfa-row');

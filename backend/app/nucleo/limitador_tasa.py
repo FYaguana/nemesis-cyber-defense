@@ -42,7 +42,9 @@ class LimitadorTasa:
             self._descartar_marcas_vencidas(ahora)
 
             if len(self._marcas_tiempo_dia) >= self._maximo_por_dia:
-                segundos_hasta_liberar = 86400 - (ahora - self._marcas_tiempo_dia[0])
+                # con un límite de 0 no hay marcas que esperar: se sugiere la ventana completa
+                segundos_hasta_liberar = (86400 - (ahora - self._marcas_tiempo_dia[0])
+                                          if self._marcas_tiempo_dia else 86400)
                 return ResultadoLimiteTasa(
                     permitida=False,
                     motivo=f"Se alcanzó el límite diario gratuito ({self._maximo_por_dia} solicitudes).",
@@ -50,7 +52,8 @@ class LimitadorTasa:
                 )
 
             if len(self._marcas_tiempo_minuto) >= self._maximo_por_minuto:
-                segundos_hasta_liberar = 60 - (ahora - self._marcas_tiempo_minuto[0])
+                segundos_hasta_liberar = (60 - (ahora - self._marcas_tiempo_minuto[0])
+                                          if self._marcas_tiempo_minuto else 60)
                 return ResultadoLimiteTasa(
                     permitida=False,
                     motivo="Se alcanzó el límite de solicitudes por minuto. Esperá unos segundos.",

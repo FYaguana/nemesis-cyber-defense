@@ -316,3 +316,34 @@ def usuario_existe_activo(email: str) -> bool:
 
 def usuario_existe(email: str) -> bool:
     return obtener_usuario_por_email(email) is not None
+
+
+def asegurar_administrador_inicial(email: str, nombre: str, url_base: str):
+    """Arranque seguro del PRIMER Administrador real (reemplaza a la cuenta demo).
+
+    Se invoca al iniciar el servidor si existe NEMESIS_ADMIN_EMAIL. Es idempotente:
+    - si ese correo ya es un usuario ACTIVO, no hace nada;
+    - si existe pero sigue sin activar (invitación perdida o vencida), regenera el token;
+    - si no existe, crea la invitación con rol Administrador.
+    El enlace de activación (válido 24 h) se escribe SOLO en los logs del servidor, a los
+    que únicamente accede quien administra el despliegue; allí la persona define su
+    contraseña y vincula su segundo factor TOTP (flujo normal de activación).
+    Retorna el enlace, o None si no hizo falta crear nada."""
+    email = (email or "").lower().strip()
+    if not email:
+        return None
+    existente = obtener_usuario_por_email(email)
+    if existente and existente["activo"]:
+        return None
+
+    token = secrets.token_urlsafe(24)
+    expira = (datetime.now() + timedelta(hours=24)).isoformat()
+    if existente:
+        crear_token_accion(existente["id"], "invitacion", token, expira)
+    else:
+        crear_usuario_invitado(email, nombre or "Administrador", "Administrador", token, expira)
+
+    link = f"{url_base.rstrip('/')}/activar.html?token={token}"
+    logger.warning("ADMINISTRADOR INICIAL pendiente de activar (%s). Enlace de activación "
+                   "(válido 24 h): %s", email, link)
+    return link

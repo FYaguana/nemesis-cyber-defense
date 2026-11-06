@@ -139,3 +139,14 @@ Este snapshot no incluye la función de identificación de dispositivo por MAC
 sesión anterior — el `.rar` es de un punto previo a esa mejora. Si la querés
 de vuelta, avisame y la reincorporo al módulo `captura_red.py`.
 
+---
+
+## Pruebas, CI/CD y despliegue
+
+- **Pruebas:** `cd backend && pip install -r requirements-dev.txt && python -m pytest tests -v`
+- **CI/CD:** `.github/workflows/ci-cd.yml` (pytest + validación del frontend → imágenes Docker → despliegue).
+- **Reproducir la Tabla 7:** `cd backend && python -m app.motor.experimentos` (añade `--guardar-modelos` para reemplazar los modelos).
+- **Variables de entorno, pasos de despliegue, ajustes de tesis y guion de demo:** ver [`docs/CAMBIOS_Y_DESPLIEGUE.md`](docs/CAMBIOS_Y_DESPLIEGUE.md).
+- **Tesis ↔ sistema (qué se corrigió y qué debe ajustar la tesis):** [`docs/AJUSTES_TESIS_FINAL.md`](docs/AJUSTES_TESIS_FINAL.md).
+- **Reentrenar desde cero:** `cd backend && python -m app.motor.entrenar_nemesis`.
+- **Seguridad:** las cuentas demo están deshabilitadas por defecto. El primer administrador se crea con `NEMESIS_ADMIN_EMAIL`.

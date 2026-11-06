@@ -10,7 +10,7 @@ from datetime import datetime
 
 from fastapi import Request, HTTPException, Depends
 
-from app.nucleo.gestor_sesiones import RUTA_SESIONES
+from app.nucleo.gestor_sesiones import RUTA_SESIONES, cuentas_demo_habilitadas
 import os
 
 
@@ -48,6 +48,10 @@ def requiere_sesion_autenticada(peticion: Request) -> SesionUsuario:
         raise HTTPException(status_code=401, detail="La sesión expiró")
 
     usuario = sesion_guardada["usuario"]
+    # Sesiones de cuentas demo creadas ANTES de deshabilitarlas (o con el formato anterior, que
+    # guardaba "mfa_code") dejan de ser válidas cuando NEMESIS_CUENTAS_DEMO no está activo.
+    if (usuario.get("demo") or "mfa_code" in usuario) and not cuentas_demo_habilitadas():
+        raise HTTPException(status_code=401, detail="Las cuentas demo están deshabilitadas")
     return SesionUsuario(email=sesion_guardada["email"], nombre=usuario["nombre"], rol=usuario["rol"])
 
 

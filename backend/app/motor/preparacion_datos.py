@@ -1,15 +1,29 @@
 """
-limpieza.py – Módulo de Limpieza y Preprocesamiento de Datos
-Sistema Nemesis Cyber Defense
-Tesis: Predicción y Prevención de Ciberataques con Deep Learning
+preparacion_datos.py -- Pipeline de datos de Nemesis (Secciones 3.3 y 4.1 de la tesis)
+
+    Dataset base -> Limpieza -> Feature Engineering -> Normalización -> División Train/Val/Test
+
+- Limpieza: eliminación de duplicados, imputación de nulos y CONSERVACIÓN de valores atípicos
+  (en src_bytes o count pueden ser evidencia de un ataque en curso).
+- Feature Engineering: cuatro variables derivadas (ratio_bytes, tasa_errores,
+  intentos_fallo_norm, actividad_root) sobre las 41 variables base: 45 entradas en total.
+- Normalización Z-score (StandardScaler) con media y desviación calculadas EXCLUSIVAMENTE
+  sobre el conjunto de entrenamiento, para evitar fuga de información hacia validación y prueba.
+- División: el conjunto base de entrenamiento (15,000) se parte 85 % / 15 % de forma
+  estratificada; el de prueba (4,000) viene de un archivo separado y fijo.
+
+La MISMA función (`vectorizar_muestras`) se usa en entrenamiento, inferencia en vivo y captura
+de red, de modo que una muestra produce exactamente el mismo vector sin importar el orden en
+que lleguen sus claves ni qué variables falten.
 """
 
-import pandas as pd
-import numpy as np
-from sklearn.preprocessing import StandardScaler, LabelEncoder, MinMaxScaler
-from sklearn.model_selection import train_test_split
 import logging
 import os
+
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder, StandardScaler
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [NEMESIS-LIMPIEZA] %(message)s")
 logger = logging.getLogger(__name__)
@@ -36,6 +50,15 @@ COLUMNAS_NUMERICAS = [c for c in COLUMNAS_BASE if c not in
 
 COLUMNAS_CATEGORICAS = ["protocol_type", "service", "flag"]
 
+# Orden FIJO de las variables de entrada (sin la etiqueta). Es el orden del CSV de entrenamiento
+# y, por lo tanto, el que espera el escalador y los modelos.
+COLUMNAS_ENTRADA = [c for c in COLUMNAS_BASE if c != "label"]
+
+# Variables derivadas (Sección 4.1): conocimiento de dominio de ciberseguridad (Berjawi et al., 2023).
+VARIABLES_DERIVADAS = ["ratio_bytes", "tasa_errores", "intentos_fallo_norm", "actividad_root"]
+
+N_VARIABLES_ENTRADA = len(COLUMNAS_ENTRADA) + len(VARIABLES_DERIVADAS)  # 41 + 4 = 45
+
 # Mapeo de etiquetas a clases de ataque (simplificado)
 MAPA_ETIQUETAS = {
     "normal": "NORMAL",
@@ -55,105 +78,6 @@ MAPA_ETIQUETAS = {
 }
 
 
-def generar_dataset_sintetico(n_samples: int = 5000, seed: int = 42) -> pd.DataFrame:
-    """
-    Genera un dataset sintético de tráfico de red con las variables críticas
-    descritas en la tesis (tcprtt, synack, etc.) para pruebas del prototipo.
-    """
-    np.random.seed(seed)
-    logger.info(f"Generando dataset sintético con {n_samples} muestras...")
-
-    n_normal = int(n_samples * 0.65)
-    n_dos    = int(n_samples * 0.15)
-    n_probe  = int(n_samples * 0.10)
-    n_r2l    = int(n_samples * 0.05)
-    n_u2r    = n_samples - n_normal - n_dos - n_probe - n_r2l
-
-    def muestra(label, n, overrides=None):
-        base = {
-            "duration":              np.random.exponential(5, n),
-            "protocol_type":         np.random.choice(["tcp","udp","icmp"], n, p=[0.7,0.2,0.1]),
-            "service":               np.random.choice(["http","ftp","smtp","ssh","dns"], n),
-            "flag":                  np.random.choice(["SF","S0","REJ","RSTO"], n, p=[0.8,0.1,0.07,0.03]),
-            "src_bytes":             np.random.exponential(1000, n),
-            "dst_bytes":             np.random.exponential(5000, n),
-            "land":                  np.zeros(n),
-            "wrong_fragment":        np.random.poisson(0.1, n),
-            "urgent":                np.zeros(n),
-            "hot":                   np.random.poisson(1, n),
-            "num_failed_logins":     np.zeros(n),
-            "logged_in":             np.ones(n),
-            "num_compromised":       np.zeros(n),
-            "root_shell":            np.zeros(n),
-            "su_attempted":          np.zeros(n),
-            "num_root":              np.zeros(n),
-            "num_file_creations":    np.random.poisson(0.2, n),
-            "num_shells":            np.zeros(n),
-            "num_access_files":      np.random.poisson(0.5, n),
-            "num_outbound_cmds":     np.zeros(n),
-            "is_host_login":         np.zeros(n),
-            "is_guest_login":        np.zeros(n),
-            "count":                 np.random.randint(1, 512, n).astype(float),
-            "srv_count":             np.random.randint(1, 512, n).astype(float),
-            "serror_rate":           np.random.beta(1, 9, n),
-            "srv_serror_rate":       np.random.beta(1, 9, n),
-            "rerror_rate":           np.random.beta(1, 9, n),
-            "srv_rerror_rate":       np.random.beta(1, 9, n),
-            "same_srv_rate":         np.random.beta(9, 1, n),
-            "diff_srv_rate":         np.random.beta(1, 9, n),
-            "srv_diff_host_rate":    np.random.beta(1, 5, n),
-            "dst_host_count":        np.random.randint(1, 256, n).astype(float),
-            "dst_host_srv_count":    np.random.randint(1, 256, n).astype(float),
-            "dst_host_same_srv_rate":    np.random.beta(7, 3, n),
-            "dst_host_diff_srv_rate":    np.random.beta(1, 9, n),
-            "dst_host_same_src_port_rate":   np.random.beta(5, 5, n),
-            "dst_host_srv_diff_host_rate":   np.random.beta(1, 5, n),
-            "dst_host_serror_rate":  np.random.beta(1, 9, n),
-            "dst_host_srv_serror_rate":  np.random.beta(1, 9, n),
-            "dst_host_rerror_rate":  np.random.beta(1, 9, n),
-            "dst_host_srv_rerror_rate":  np.random.beta(1, 9, n),
-            "label":                 [label] * n
-        }
-        if overrides:
-            for k, v in overrides.items():
-                base[k] = v
-        return pd.DataFrame(base)
-
-    normal = muestra("NORMAL", n_normal)
-
-    dos = muestra("DoS", n_dos, {
-        "src_bytes":     np.random.exponential(50000, n_dos),
-        "count":         np.random.randint(400, 512, n_dos).astype(float),
-        "serror_rate":   np.random.beta(8, 2, n_dos),
-        "flag":          np.random.choice(["S0","REJ"], n_dos),
-        "duration":      np.random.exponential(0.5, n_dos),
-    })
-
-    probe = muestra("Probe", n_probe, {
-        "dst_host_count":    np.random.randint(200, 256, n_probe).astype(float),
-        "diff_srv_rate":     np.random.beta(7, 3, n_probe),
-        "srv_diff_host_rate": np.random.beta(6, 4, n_probe),
-        "logged_in":         np.zeros(n_probe),
-    })
-
-    r2l = muestra("R2L", n_r2l, {
-        "num_failed_logins": np.random.randint(3, 20, n_r2l).astype(float),
-        "logged_in":         np.zeros(n_r2l),
-        "hot":               np.random.randint(5, 30, n_r2l).astype(float),
-    })
-
-    u2r = muestra("U2R", n_u2r, {
-        "root_shell":        np.ones(n_u2r),
-        "num_root":          np.random.randint(1, 10, n_u2r).astype(float),
-        "num_compromised":   np.random.randint(1, 10, n_u2r).astype(float),
-    })
-
-    df = pd.concat([normal, dos, probe, r2l, u2r], ignore_index=True)
-    df = df.sample(frac=1, random_state=seed).reset_index(drop=True)
-    logger.info(f"Dataset generado: {df.shape} | Distribución:\n{df['label'].value_counts()}")
-    return df
-
-
 def limpiar_datos(df: pd.DataFrame) -> pd.DataFrame:
     """Fase 3.2.3 – Limpieza y validación de datos."""
     logger.info("Iniciando limpieza de datos...")
@@ -168,12 +92,15 @@ def limpiar_datos(df: pd.DataFrame) -> pd.DataFrame:
     nulos = df.isnull().sum().sum()
     if nulos > 0:
         logger.warning(f"Valores nulos detectados: {nulos}")
+        # Asignación explícita: `df[col].fillna(..., inplace=True)` no modifica el DataFrame
+        # con pandas >= 3 (copy-on-write) y la imputación se perdería en silencio.
         for col in COLUMNAS_NUMERICAS:
             if col in df.columns:
-                df[col].fillna(df[col].median(), inplace=True)
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+                df[col] = df[col].fillna(df[col].median())
         for col in COLUMNAS_CATEGORICAS:
-            if col in df.columns:
-                df[col].fillna(df[col].mode()[0], inplace=True)
+            if col in df.columns and df[col].notna().any():
+                df[col] = df[col].fillna(df[col].mode()[0])
 
     # 3. Detectar outliers (no se eliminan – pueden ser ataques)
     for col in ["src_bytes", "dst_bytes", "count", "num_failed_logins"]:
@@ -192,40 +119,47 @@ def limpiar_datos(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def agregar_variables_derivadas(df: pd.DataFrame) -> pd.DataFrame:
+    """Sección 4.1: cuatro variables derivadas. Se aplica igual en entrenamiento e inferencia.
+
+        ratio_bytes         = src_bytes / (dst_bytes + 1)
+        tasa_errores        = serror_rate + rerror_rate
+        intentos_fallo_norm = num_failed_logins / (count + 1)
+        actividad_root      = root_shell + num_root + num_compromised
+    """
+    df = df.copy()
+    df["ratio_bytes"] = df["src_bytes"] / (df["dst_bytes"] + 1)
+    df["tasa_errores"] = df["serror_rate"] + df["rerror_rate"]
+    df["intentos_fallo_norm"] = df["num_failed_logins"] / (df["count"] + 1)
+    df["actividad_root"] = df["root_shell"] + df["num_root"] + df["num_compromised"]
+    return df
+
+
 def transformar_features(df: pd.DataFrame, scaler=None, encoders=None, fit=True):
     """
-    Fase 3.2.4 – Feature Engineering y transformación.
+    Fase 3.2.4 – Feature Engineering y transformación (uso en ENTRENAMIENTO/evaluación).
     Retorna (X_array, y_array, scaler, label_encoders, label_encoder_target)
+
+    - fit=True : ajusta encoders y scaler con ESTE dataframe (debe ser solo el de entrenamiento).
+    - fit=False: reutiliza los objetos ya ajustados (validación, prueba), sin ajustar nada nuevo.
     """
     logger.info("Iniciando transformación de features...")
     df = df.copy()
 
-    # ── Encoding de variables categóricas (One-Hot simplificado con LabelEncoder) ──
+    # ── Encoding de variables categóricas ──
     if encoders is None:
         encoders = {}
-
     for col in COLUMNAS_CATEGORICAS:
-        if col in df.columns:
-            if fit:
-                le = LabelEncoder()
-                df[col] = le.fit_transform(df[col].astype(str))
-                encoders[col] = le
-            else:
-                le = encoders[col]
-                df[col] = df[col].astype(str).apply(
-                    lambda x: le.transform([x])[0] if x in le.classes_ else 0
-                )
+        if fit:
+            le = LabelEncoder()
+            df[col] = le.fit_transform(df[col].astype(str))
+            encoders[col] = le
+        else:
+            df[col] = _codificar_categoria(df[col], encoders[col])
 
-    # ── Feature Engineering: indicadores de seguridad adicionales ──
-    df["ratio_src_dst"] = df["src_bytes"] / (df["dst_bytes"] + 1)
-    df["tasa_errores"]  = df["serror_rate"] + df["rerror_rate"]
-    df["intentos_fallo_norm"] = df["num_failed_logins"] / (df["count"] + 1)
-    df["actividad_root"] = df["root_shell"] + df["num_root"] + df["num_compromised"]
-
-    # ── Preparar X e y ──
-    excluir = ["label"]
-    columnas_X = [c for c in df.columns if c not in excluir]
-    X = df[columnas_X].values.astype(np.float32)
+    # ── Feature Engineering y selección explícita (orden fijo) ──
+    df = agregar_variables_derivadas(df)
+    X = df[COLUMNAS_ENTRADA + VARIABLES_DERIVADAS].values.astype(np.float32)
 
     # ── Normalización Z-score ──
     if fit:
@@ -245,120 +179,63 @@ def transformar_features(df: pd.DataFrame, scaler=None, encoders=None, fit=True)
     return X, y, scaler, encoders, le_target
 
 
-def preparar_datos_completo(n_samples=5000, test_size=0.2, val_size=0.1, seed=42):
+def _codificar_categoria(serie: pd.Series, encoder: LabelEncoder) -> pd.Series:
+    """Categoría -> entero con el encoder del entrenamiento. Una categoría nunca vista
+    (p. ej. un servicio que no estaba en el dataset) se codifica como 0."""
+    indice = {valor: i for i, valor in enumerate(encoder.classes_)}
+    return serie.astype(str).map(lambda valor: indice.get(valor, 0))
+
+
+def vectorizar_muestras(muestras, scaler, encoders) -> np.ndarray:
+    """Convierte muestras crudas en vectores listos para el modelo (uso en INFERENCIA).
+
+    `muestras` puede ser un dict, una lista de dicts o un DataFrame. Garantiza:
+      * el orden de columnas es SIEMPRE el del entrenamiento, sin importar el orden de las claves;
+      * las variables que no vienen en la muestra (p. ej. las de auditoría de host que no se
+        derivan de paquetes de red) se completan con 0 -- sin aproximarlas (Sección 4.5);
+      * las columnas extra (timestamp, IPs...) se ignoran;
+      * si el número de variables no coincide con el del escalador se lanza un error explícito,
+        en vez de rellenar o recortar en silencio.
     """
-    Pipeline completo: generar → limpiar → transformar → dividir.
-    Retorna diccionario con todos los splits y objetos de transformación.
-    """
-    df_crudo = generar_dataset_sintetico(n_samples=n_samples, seed=seed)
-    df_limpio = limpiar_datos(df_crudo)
+    if isinstance(muestras, dict):
+        muestras = [muestras]
+    df = muestras.copy() if isinstance(muestras, pd.DataFrame) else pd.DataFrame(list(muestras))
 
-    X, y, scaler, encoders, le_target = transformar_features(df_limpio, fit=True)
+    for col in COLUMNAS_ENTRADA:
+        if col not in df.columns:
+            df[col] = 0
+    df = df[COLUMNAS_ENTRADA].copy()
 
-    # Split: train / val / test
-    X_train_val, X_test, y_train_val, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=seed, stratify=y)
-    X_train, X_val, y_train, y_val = train_test_split(
-        X_train_val, y_train_val,
-        test_size=val_size / (1 - test_size),
-        random_state=seed, stratify=y_train_val)
+    for col in COLUMNAS_CATEGORICAS:
+        df[col] = _codificar_categoria(df[col], encoders[col])
+    for col in COLUMNAS_NUMERICAS:
+        df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
 
-    logger.info(f"Split → Train: {X_train.shape[0]} | Val: {X_val.shape[0]} | Test: {X_test.shape[0]}")
-
-    return {
-        "X_train": X_train, "y_train": y_train,
-        "X_val":   X_val,   "y_val":   y_val,
-        "X_test":  X_test,  "y_test":  y_test,
-        "scaler":  scaler,
-        "encoders": encoders,
-        "le_target": le_target,
-        "n_clases": len(le_target.classes_),
-        "n_features": X_train.shape[1],
-        "clases": list(le_target.classes_),
-        "df_crudo": df_crudo,
-    }
-
-
-def preparar_datos_con_reales(muestras_reales: list, n_samples_sinteticos=5000,
-                               test_size=0.2, val_size=0.1, seed=42):
-    """
-    Igual que preparar_datos_completo(), pero además incorpora tráfico REAL
-    ya confirmado/corregido por un analista humano (ver database_manager.
-    obtener_capturas_etiquetadas()). Esta es la pieza clave del "aprendizaje
-    activo" (human-in-the-loop) del sistema: nunca se reentrena con las
-    propias predicciones del modelo como si fueran verdad — solo con
-    etiquetas puestas por una persona — para no reforzar sus propios errores.
-
-    muestras_reales: lista de dicts, cada uno con las features crudas del
-    flujo real capturado + una clave "label" con la etiqueta humana
-    (NORMAL/DoS/Probe/R2L/U2R). Las columnas que NSL-KDD tiene pero que no
-    son derivables de paquetes de red (num_compromised, root_shell, etc.)
-    ya vienen en 0 desde el propio flujo de captura — es la misma limitación
-    documentada en la Sección de resultados sobre datos reales.
-    """
-    df_sintetico = generar_dataset_sintetico(n_samples=n_samples_sinteticos, seed=seed)
-
-    if muestras_reales:
-        df_reales = pd.DataFrame(muestras_reales)
-        # Asegurar que estén TODAS las columnas esperadas, en el mismo orden;
-        # cualquier columna faltante en los datos reales se rellena con 0.
-        for col in COLUMNAS_BASE:
-            if col not in df_reales.columns:
-                df_reales[col] = 0
-        df_reales = df_reales[COLUMNAS_BASE]
-        df_combinado = pd.concat([df_sintetico, df_reales], ignore_index=True)
-        logger.info(f"Dataset combinado: {len(df_sintetico)} sintéticas + "
-                    f"{len(df_reales)} reales confirmadas = {len(df_combinado)} muestras")
-    else:
-        df_combinado = df_sintetico
-        logger.info("No había muestras reales confirmadas todavía; se entrena solo con datos sintéticos.")
-
-    df_limpio = limpiar_datos(df_combinado)
-    X, y, scaler, encoders, le_target = transformar_features(df_limpio, fit=True)
-
-    X_train_val, X_test, y_train_val, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=seed, stratify=y)
-    X_train, X_val, y_train, y_val = train_test_split(
-        X_train_val, y_train_val,
-        test_size=val_size / (1 - test_size),
-        random_state=seed, stratify=y_train_val)
-
-    logger.info(f"Split → Train: {X_train.shape[0]} | Val: {X_val.shape[0]} | Test: {X_test.shape[0]}")
-
-    return {
-        "X_train": X_train, "y_train": y_train,
-        "X_val":   X_val,   "y_val":   y_val,
-        "X_test":  X_test,  "y_test":  y_test,
-        "scaler":  scaler,
-        "encoders": encoders,
-        "le_target": le_target,
-        "n_clases": len(le_target.classes_),
-        "n_features": X_train.shape[1],
-        "clases": list(le_target.classes_),
-        "df_crudo": df_combinado,
-        "n_muestras_reales": len(muestras_reales) if muestras_reales else 0,
-    }
+    df = agregar_variables_derivadas(df)
+    X = df[COLUMNAS_ENTRADA + VARIABLES_DERIVADAS].to_numpy(dtype=np.float32)
+    if X.shape[1] != scaler.n_features_in_:
+        raise ValueError(f"El escalador espera {scaler.n_features_in_} variables y la muestra produce "
+                         f"{X.shape[1]}: los modelos no corresponden al pipeline actual (reentrenar).")
+    return scaler.transform(X)
 
 
 def preparar_datos_con_reales_y_base(muestras_reales: list, ruta_train: str = None,
                                        ruta_test: str = None, val_size: float = 0.15, seed: int = 42):
     """
-    Usa como FUNDAMENTO los CSV NSL-KDD ya generados del proyecto
-    (data/NSL_KDD_train.csv y NSL_KDD_test.csv, calibrados según las
-    distribuciones publicadas por Tavallaee et al. 2009 — ver
-    dataset_nslkdd.py), en vez de generar un dataset sintético nuevo en
-    memoria cada vez. Esto le da continuidad y solidez al entrenamiento:
-    siempre parte de la misma base validada, no de datos distintos en
-    cada corrida.
+    Pipeline de la tesis (Sección 4.1). Usa como FUNDAMENTO los CSV con la estructura y las
+    proporciones de clase del NSL-KDD (data/NSL_KDD_train.csv y NSL_KDD_test.csv; generados por
+    generador_dataset_base.py, calibrados únicamente en las proporciones publicadas por
+    Tavallaee et al., 2009).
 
-    Las muestras reales confirmadas por un analista (ver
-    database_manager.obtener_capturas_etiquetadas()) se agregan SOLO al
-    conjunto de ENTRENAMIENTO. El conjunto de TEST (NSL_KDD_test.csv)
-    se mantiene intacto como benchmark limpio, para poder comparar de
-    forma justa el desempeño del modelo antes y después de cada
-    reentrenamiento contra el mismo estándar de siempre — en vez de un
-    split aleatorio distinto cada vez, que haría las métricas no
-    comparables entre sí.
+    Las muestras reales confirmadas por un analista (ver base_datos.obtener_capturas_etiquetadas)
+    se agregan SOLO al conjunto de ENTRENAMIENTO: D_entrenamiento = D_base ∪ D_real_confirmado.
+    El conjunto de PRUEBA (NSL_KDD_test.csv) se mantiene intacto como benchmark fijo, para que
+    las métricas sean comparables entre reentrenamientos sucesivos.
+
+    Orden de las operaciones (evita fuga de información):
+      1) limpieza de cada archivo;  2) división estratificada 85/15 train/validación;
+      3) los encoders y el escalador se ajustan SOLO con el 85 % de entrenamiento;
+      4) validación y prueba se transforman con esos mismos objetos (fit=False).
     """
     base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     if ruta_train is None:
@@ -382,19 +259,21 @@ def preparar_datos_con_reales_y_base(muestras_reales: list, ruta_train: str = No
         n_reales = len(df_reales)
         logger.info(f"Agregadas {n_reales} muestras reales confirmadas al conjunto de entrenamiento")
 
-    df_train_limpio = limpiar_datos(df_train)
+    df_trainval = limpiar_datos(df_train)
     df_test_limpio = limpiar_datos(df_test)
 
-    # Se ajustan scaler/encoders/le_target SOLO con el conjunto de entrenamiento.
-    X_trainval, y_trainval, scaler, encoders, le_target = transformar_features(df_train_limpio, fit=True)
+    # 2) División estratificada ANTES de ajustar ningún transformador.
+    df_tr, df_va = train_test_split(df_trainval, test_size=val_size, random_state=seed,
+                                    stratify=df_trainval["label"])
 
-    # El test se transforma con los MISMOS objetos ya ajustados (fit=False),
-    # nunca ajustando nada nuevo con datos de test — así la evaluación es válida.
+    # 3) Ajuste exclusivamente con el conjunto de entrenamiento.
+    X_train, y_train, scaler, encoders, le_target = transformar_features(df_tr, fit=True)
+
+    # 4) Validación y prueba con los MISMOS objetos ya ajustados.
+    X_val, _, _, _, _ = transformar_features(df_va, scaler=scaler, encoders=encoders, fit=False)
+    y_val = le_target.transform(df_va["label"].astype(str))
     X_test, _, _, _, _ = transformar_features(df_test_limpio, scaler=scaler, encoders=encoders, fit=False)
     y_test = le_target.transform(df_test_limpio["label"].astype(str))
-
-    X_train, X_val, y_train, y_val = train_test_split(
-        X_trainval, y_trainval, test_size=val_size, random_state=seed, stratify=y_trainval)
 
     logger.info(f"Split final → Train: {X_train.shape[0]} | Val: {X_val.shape[0]} | "
                 f"Test (benchmark fijo): {X_test.shape[0]}")
@@ -415,7 +294,7 @@ def preparar_datos_con_reales_y_base(muestras_reales: list, ruta_train: str = No
 
 
 if __name__ == "__main__":
-    datos = preparar_datos_completo(n_samples=3000)
+    datos = preparar_datos_con_reales_y_base([])
     print("\n✅ Pipeline de datos ejecutado correctamente")
     print(f"   Features: {datos['n_features']} | Clases: {datos['clases']}")
     print(f"   Train: {datos['X_train'].shape[0]} | Val: {datos['X_val'].shape[0]} | Test: {datos['X_test'].shape[0]}")

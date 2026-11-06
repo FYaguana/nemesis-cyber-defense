@@ -18,6 +18,7 @@ from app.servicios.servicio_recomendaciones_ia import (
     FragmentoPlanEnProgreso,
     PlanRespuestaIncidente,
 )
+from app.motor.base_datos import obtener_alertas_recientes
 from app.nucleo.seguridad import requiere_sesion_autenticada, requiere_rol_administrador
 from app.nucleo.dependencias import proveer_servicio_recomendaciones_ia
 from app.repositorios.repositorio_configuracion_ia import (
@@ -30,6 +31,12 @@ enrutador = APIRouter(prefix="/api/ia", tags=["Recomendaciones IA"])
 def _evento_sse(nombre_evento: str, datos: dict) -> str:
     """Formatea un evento en el formato Server-Sent Events estándar."""
     return f"event: {nombre_evento}\ndata: {json.dumps(datos, ensure_ascii=False)}\n\n"
+
+
+def _alertas_recientes_del_servidor() -> list:
+    """Contexto reciente para el prompt (Sección 4.8): se lee de la base de datos en el servidor,
+    no del cuerpo de la petición, para que el cliente no pueda inyectar contenido en el prompt."""
+    return obtener_alertas_recientes(limite=8)
 
 
 @enrutador.post("/recomendaciones")
@@ -50,7 +57,7 @@ async def generar_recomendaciones_sin_streaming(
         severidad=cuerpo.get("severidad", "NORMAL"),
         confianza=cuerpo.get("confianza", 0),
         features_influyentes=cuerpo.get("features", []),
-        alertas_recientes=cuerpo.get("alertas_recientes", []),
+        alertas_recientes=_alertas_recientes_del_servidor(),
     )
     plan_final = None
     for resultado in servicio.generar_plan_en_streaming(deteccion):
@@ -76,7 +83,7 @@ async def generar_recomendaciones_en_streaming(
         severidad=cuerpo.get("severidad", "NORMAL"),
         confianza=cuerpo.get("confianza", 0),
         features_influyentes=cuerpo.get("features", []),
-        alertas_recientes=cuerpo.get("alertas_recientes", []),
+        alertas_recientes=_alertas_recientes_del_servidor(),
     )
 
     def flujo_eventos():
@@ -91,7 +98,7 @@ async def generar_recomendaciones_en_streaming(
 
 # ─── Configuración de la API key de Gemini (solo Administrador) ─────────────
 
-@enrutador.get("/config/estado")
+@enrutador.get("/config/estado", dependencies=[Depends(requiere_sesion_autenticada)])
 async def estado_configuracion_ia():
     return {"configurada": hay_clave_api_configurada()}
 

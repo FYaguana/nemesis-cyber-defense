@@ -1,0 +1,6 @@
+# Los scripts y plantillas que corren DENTRO de contenedores Linux deben tener
+# saltos de línea LF; con CRLF (Windows) el contenedor falla con "bad interpreter".
+*.sh               text eol=lf
+*.template         text eol=lf
+Dockerfile         text eol=lf
+*.yml              text eol=lf

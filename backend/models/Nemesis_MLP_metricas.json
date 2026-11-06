@@ -1,56 +1,56 @@
 {
   "modelo": "Nemesis_MLP",
-  "recall": 1.0,
-  "precision": 1.0,
-  "f1_score": 1.0,
+  "recall": 0.9999,
+  "precision": 0.9994,
+  "f1_score": 0.9996,
   "reporte": {
     "DoS": {
       "precision": 1.0,
       "recall": 1.0,
       "f1-score": 1.0,
-      "support": 150.0
+      "support": 908.0
     },
     "NORMAL": {
       "precision": 1.0,
-      "recall": 1.0,
-      "f1-score": 1.0,
-      "support": 650.0
+      "recall": 0.9995309568480301,
+      "f1-score": 0.9997654234107436,
+      "support": 2132.0
     },
     "Probe": {
       "precision": 1.0,
       "recall": 1.0,
       "f1-score": 1.0,
-      "support": 100.0
+      "support": 480.0
     },
     "R2L": {
-      "precision": 1.0,
+      "precision": 0.9968847352024922,
       "recall": 1.0,
-      "f1-score": 1.0,
-      "support": 50.0
+      "f1-score": 0.9984399375975039,
+      "support": 320.0
     },
     "U2R": {
       "precision": 1.0,
       "recall": 1.0,
       "f1-score": 1.0,
-      "support": 50.0
+      "support": 160.0
     },
-    "accuracy": 1.0,
+    "accuracy": 0.99975,
     "macro avg": {
-      "precision": 1.0,
-      "recall": 1.0,
-      "f1-score": 1.0,
-      "support": 1000.0
+      "precision": 0.9993769470404985,
+      "recall": 0.999906191369606,
+      "f1-score": 0.9996410722016495,
+      "support": 4000.0
     },
     "weighted avg": {
-      "precision": 1.0,
-      "recall": 1.0,
-      "f1-score": 1.0,
-      "support": 1000.0
+      "precision": 0.9997507788161993,
+      "recall": 0.99975,
+      "f1-score": 0.9997501656857266,
+      "support": 4000.0
     }
   },
   "matriz_confusion": [
     [
-      150,
+      908,
       0,
       0,
       0,
@@ -58,23 +58,23 @@
     ],
     [
       0,
-      650,
+      2131,
       0,
+      1,
+      0
+    ],
+    [
+      0,
+      0,
+      480,
       0,
       0
     ],
     [
       0,
       0,
-      100,
       0,
-      0
-    ],
-    [
-      0,
-      0,
-      0,
-      50,
+      320,
       0
     ],
     [
@@ -82,7 +82,7 @@
       0,
       0,
       0,
-      50
+      160
     ]
   ],
   "clases": [

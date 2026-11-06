@@ -9,6 +9,7 @@ del modelo de detección, etc.) -- eso vive en el servicio que lo usa.
 
 import json
 import logging
+import os
 from dataclasses import dataclass
 from typing import Iterator, Optional
 
@@ -16,7 +17,9 @@ import requests
 
 logger = logging.getLogger("nemesis.cliente_gemini")
 
-MODELO_GEMINI = "gemini-2.5-flash"
+# El modelo se puede cambiar sin tocar el código (Google retira modelos con el tiempo):
+#   NEMESIS_GEMINI_MODELO=<nombre-del-modelo>
+MODELO_GEMINI = os.environ.get("NEMESIS_GEMINI_MODELO", "gemini-2.5-flash")
 URL_BASE_GEMINI = "https://generativelanguage.googleapis.com/v1beta/models"
 
 
@@ -60,21 +63,29 @@ class ClienteGemini:
         }
 
         try:
+            # La clave va en el ENCABEZADO x-goog-api-key (como exige la API de Gemini) y NO en la
+            # URL: las excepciones de `requests` incluyen la URL completa en su mensaje, y una clave
+            # en la query string terminaba en los logs y en el mensaje que ve el usuario.
             respuesta = requests.post(
                 url,
-                params={"key": self._clave_api, "alt": "sse"},
-                headers={"content-type": "application/json"},
+                params={"alt": "sse"},
+                headers={"content-type": "application/json", "x-goog-api-key": self._clave_api},
                 json=cuerpo,
                 stream=True,
                 timeout=self._tiempo_espera_segundos,
             )
         except requests.RequestException as error:
-            raise ErrorClienteGemini(f"Error de conexión con la IA: {error}") from error
+            logger.warning("Fallo de red al llamar a Gemini: %s", self._ocultar_clave(str(error)))
+            raise ErrorClienteGemini("No se pudo conectar con el servicio de IA (error de red).") from None
 
         if respuesta.status_code != 200:
             raise self._construir_error_desde_respuesta(respuesta)
 
         yield from self._leer_eventos_sse(respuesta)
+
+    def _ocultar_clave(self, texto: str) -> str:
+        """Defensa en profundidad: nunca dejar la clave en un mensaje, aunque algún día vuelva a viajar en la URL."""
+        return texto.replace(self._clave_api, "***") if self._clave_api else texto
 
     def _leer_eventos_sse(self, respuesta: requests.Response) -> Iterator[str]:
         texto_acumulado = ""
@@ -97,7 +108,7 @@ class ClienteGemini:
                 yield texto_acumulado
 
     def _construir_error_desde_respuesta(self, respuesta: requests.Response) -> ErrorClienteGemini:
-        logger.error("Gemini respondió %s: %s", respuesta.status_code, respuesta.text[:300])
+        logger.error("Gemini respondió %s: %s", respuesta.status_code, self._ocultar_clave(respuesta.text[:300]))
         if respuesta.status_code in (401, 403):
             return ErrorClienteGemini("La API key configurada no es válida.", es_error_autenticacion=True)
         if respuesta.status_code == 429:

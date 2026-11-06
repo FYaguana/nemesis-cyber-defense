@@ -14,10 +14,19 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-# Umbrales de alerta (Sección 3.3.1)
+# Umbrales de alerta (Tabla 6 de la tesis, Sección 4.4)
 UMBRAL_CRITICO     = 0.90
 UMBRAL_ADVERTENCIA = 0.70
 UMBRAL_INFO        = 0.50
+
+# Tiempo de respuesta objetivo por nivel de severidad (Tabla 6). Es un objetivo de diseño del
+# sistema para priorizar la atención del analista; se muestra junto a cada alerta.
+TIEMPO_RESPUESTA_OBJETIVO = {
+    "CRÍTICO": "< 5 min",
+    "ADVERTENCIA": "< 30 min",
+    "INFORMACIÓN": "< 2 horas",
+    "NORMAL": None,
+}
 
 # Ventana de confirmación (Sección 3.3.2)
 VENTANA_CONFIRMACION = 3  # N predicciones consecutivas
@@ -50,7 +59,7 @@ class ProcesadorNemesis:
 
             config_path = os.path.join(self.ruta_modelos, "config.json")
             if not os.path.exists(config_path):
-                logger.error("No se encontró config.json. Ejecuta entrenar_nemesis.py primero.")
+                logger.error("No se encontró config.json. Ejecuta `python -m app.motor.entrenar_nemesis` primero.")
                 return False
 
             with open(config_path) as f:
@@ -84,51 +93,8 @@ class ProcesadorNemesis:
         Aplica los mismos encoders y scaler usados en el entrenamiento.
         """
         try:
-            from app.motor.preparacion_datos import COLUMNAS_CATEGORICAS, COLUMNAS_NUMERICAS
-            import pandas as pd
-
-            df = pd.DataFrame([muestra])
-
-            # Encoding categórico
-            for col in COLUMNAS_CATEGORICAS:
-                if col in df.columns and col in self.encoders:
-                    le = self.encoders[col]
-                    df[col] = df[col].astype(str).apply(
-                        lambda x: le.transform([x])[0] if x in le.classes_ else 0
-                    )
-                elif col not in df.columns:
-                    df[col] = 0
-
-            # Features de ingeniería
-            df["ratio_src_dst"]       = df.get("src_bytes", pd.Series([0])) / \
-                                         (df.get("dst_bytes", pd.Series([1])) + 1)
-            df["tasa_errores"]        = df.get("serror_rate", pd.Series([0])) + \
-                                         df.get("rerror_rate", pd.Series([0]))
-            df["intentos_fallo_norm"] = df.get("num_failed_logins", pd.Series([0])) / \
-                                         (df.get("count", pd.Series([1])) + 1)
-            df["actividad_root"]      = df.get("root_shell", pd.Series([0])) + \
-                                         df.get("num_root", pd.Series([0])) + \
-                                         df.get("num_compromised", pd.Series([0]))
-
-            # Asegurar columnas numéricas
-            for col in COLUMNAS_NUMERICAS:
-                if col not in df.columns:
-                    df[col] = 0
-
-            excluir = ["label"]
-            columnas_X = [c for c in df.columns if c not in excluir]
-            X = df[columnas_X].values.astype(np.float32)
-
-            # Ajustar dimensiones al scaler
-            n_esperado = self.scaler.n_features_in_
-            if X.shape[1] < n_esperado:
-                pad = np.zeros((X.shape[0], n_esperado - X.shape[1]), dtype=np.float32)
-                X = np.hstack([X, pad])
-            elif X.shape[1] > n_esperado:
-                X = X[:, :n_esperado]
-
-            return self.scaler.transform(X)
-
+            from app.motor.preparacion_datos import vectorizar_muestras
+            return vectorizar_muestras(muestra, self.scaler, self.encoders)
         except Exception as e:
             logger.error(f"Error preprocesando muestra: {e}")
             return None
@@ -139,7 +105,7 @@ class ProcesadorNemesis:
         Método principal del procesador.
         """
         if not self._cargado:
-            return {"error": "Modelos no cargados. Ejecuta entrenar_nemesis.py"}
+            return {"error": "Modelos no cargados. Ejecuta `python -m app.motor.entrenar_nemesis`"}
 
         X = self.preprocesar_muestra(muestra)
         if X is None:
@@ -197,6 +163,7 @@ class ProcesadorNemesis:
             "timestamp":   datetime.now().isoformat(),
             "clase":       clase_final,
             "severidad":   severidad,
+            "tiempo_respuesta_objetivo": TIEMPO_RESPUESTA_OBJETIVO[severidad],
             "confianza":   round(conf_final * 100, 2),
             "mlp": {"clase": clase_mlp, "confianza": round(conf_mlp * 100, 2)},
             "rnn": {"clase": clase_rnn, "confianza": round(conf_rnn * 100, 2)},
@@ -309,64 +276,20 @@ class ProcesadorNemesis:
         ]
 
     def generar_trafico_demo(self, tipo: str = "aleatorio") -> dict:
-        """Genera una muestra de tráfico de red para demostración."""
-        np.random.seed()
+        """Muestra de tráfico para los botones de simulación del dashboard.
 
-        base = {
-            "duration": np.random.exponential(5),
-            "protocol_type": np.random.choice(["tcp", "udp", "icmp"]),
-            "service": np.random.choice(["http", "ftp", "smtp", "ssh", "dns"]),
-            "flag": "SF",
-            "src_bytes": 1024.0,
-            "dst_bytes": 4096.0,
-            "land": 0, "wrong_fragment": 0, "urgent": 0, "hot": 1,
-            "num_failed_logins": 0, "logged_in": 1, "num_compromised": 0,
-            "root_shell": 0, "su_attempted": 0, "num_root": 0,
-            "num_file_creations": 0, "num_shells": 0, "num_access_files": 1,
-            "num_outbound_cmds": 0, "is_host_login": 0, "is_guest_login": 0,
-            "count": float(np.random.randint(10, 100)),
-            "srv_count": float(np.random.randint(10, 80)),
-            "serror_rate": 0.02, "srv_serror_rate": 0.01,
-            "rerror_rate": 0.01, "srv_rerror_rate": 0.01,
-            "same_srv_rate": 0.9, "diff_srv_rate": 0.05,
-            "srv_diff_host_rate": 0.1,
-            "dst_host_count": float(np.random.randint(20, 100)),
-            "dst_host_srv_count": float(np.random.randint(20, 80)),
-            "dst_host_same_srv_rate": 0.8, "dst_host_diff_srv_rate": 0.05,
-            "dst_host_same_src_port_rate": 0.5, "dst_host_srv_diff_host_rate": 0.1,
-            "dst_host_serror_rate": 0.02, "dst_host_srv_serror_rate": 0.01,
-            "dst_host_rerror_rate": 0.01, "dst_host_srv_rerror_rate": 0.01,
-        }
-
-        if tipo == "dos":
-            base.update({
-                "src_bytes": float(np.random.randint(50000, 200000)),
-                "count": float(np.random.randint(450, 511)),
-                "serror_rate": float(np.random.uniform(0.7, 1.0)),
-                "flag": "S0",
-                "duration": 0.1,
-            })
-        elif tipo == "probe":
-            base.update({
-                "dst_host_count": float(np.random.randint(220, 255)),
-                "diff_srv_rate": float(np.random.uniform(0.6, 0.9)),
-                "logged_in": 0,
-                "srv_diff_host_rate": float(np.random.uniform(0.5, 0.9)),
-            })
-        elif tipo == "r2l":
-            base.update({
-                "num_failed_logins": float(np.random.randint(10, 30)),
-                "logged_in": 0,
-                "hot": float(np.random.randint(10, 40)),
-            })
-        elif tipo == "u2r":
-            base.update({
-                "root_shell": 1,
-                "num_root": float(np.random.randint(5, 20)),
-                "num_compromised": float(np.random.randint(3, 15)),
-            })
-
-        return base
+        Se genera con el MISMO perfil estadístico por clase que el dataset con el que se
+        entrenaron los modelos (generador_dataset_base, calibrado según Tavallaee et al.,
+        2009). Antes usaba perfiles propios, calibrados para un dataset anterior, y tras
+        reentrenar con NSL_KDD_train.csv el modelo ya no reconocía el 'DoS' simulado."""
+        from app.motor.generador_dataset_base import _generar_clase
+        clases = {"normal": "NORMAL", "dos": "DoS", "probe": "Probe", "r2l": "R2L", "u2r": "U2R"}
+        rng = np.random.default_rng()
+        if tipo not in clases:  # "aleatorio" o cualquier valor desconocido
+            tipo = str(rng.choice(list(clases)))
+        fila = _generar_clase(clases[tipo], 1, rng).iloc[0].to_dict()
+        fila.pop("label", None)
+        return {k: (v.item() if hasattr(v, "item") else v) for k, v in fila.items()}
 
 
 # Instancia global del procesador

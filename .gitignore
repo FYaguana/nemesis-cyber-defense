@@ -1,0 +1,22 @@
+# --- Secretos y estado de ejecución: NUNCA se versionan ---
+# (git no admite comentarios al final de una línea; por eso van arriba)
+# config_email.json contiene la contraseña de aplicación de Gmail
+backend/data/config_email.json
+# sesiones.json contiene tokens de sesión activos
+backend/data/sesiones.json
+# nemesis.db guarda usuarios, alertas y capturas reales
+backend/data/nemesis.db
+backend/data/config_red_real.json
+.env
+*.env
+
+# --- Python / entornos ---
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+.pytest_cache/
+
+# --- Otros ---
+node_modules/
+.DS_Store

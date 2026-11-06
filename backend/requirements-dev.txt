@@ -1,0 +1,7 @@
+# Dependencias SOLO para pruebas y regeneración de datos (no se instalan en producción).
+-r requirements.txt
+pytest>=8.0
+httpx>=0.27          # lo usa fastapi.testclient
+netaddr>=1.0         # solo para scripts/generar_tabla_oui.py
+flake8>=7.0          # análisis de errores del CI (Sección 4.9 de la tesis)
+pyyaml>=6.0          # prueba que valida la estructura del workflow de CI

@@ -192,7 +192,7 @@ canvas{width:100%!important}
 </main>
 
 <script>
-const URL_BASE_API = window.NEMESIS_API_URL || "http://localhost:8000";
+const URL_BASE_API = (typeof window.NEMESIS_API_URL !== "undefined") ? window.NEMESIS_API_URL : "http://localhost:8000";
 // ── Estado global ──────────────────────────────────────────────────────────
 let ROL_USUARIO = null;
 const C={criticas:0,advertencias:0,normales:0,total:0};
@@ -396,6 +396,7 @@ function tRedReal(){return`
       <span style="width:10px;height:10px;border-radius:50%;display:inline-block" id="rr-estado-dot"></span>
       <b id="rr-estado" style="font-size:.85rem;color:var(--m)">Verificando estado...</b>
       <span id="rr-iface-actual" style="font-size:.72rem;color:var(--m)"></span>
+      <span id="rr-backend" style="font-size:.72rem;font-weight:700"></span>
     </div>
     <span style="font-size:.82rem;color:var(--t)">
       <b id="rr-total" style="color:var(--a)">0</b> conexiones analizadas
@@ -474,6 +475,23 @@ function tRedReal(){return`
     </div>
   </div>
 </div>
+<div class="panel" style="margin-top:14px">
+  <div class="ph" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+    <span class="pt">📈 VALIDACIÓN CON TRÁFICO REAL</span>
+    <span style="display:flex;gap:8px">
+      <button class="btn-an" style="padding:6px 12px;font-size:.75rem" onclick="cargarValidacionRR()">↻ Actualizar</button>
+      <button class="btn-an" style="padding:6px 12px;font-size:.75rem" onclick="window.open(URL_BASE_API + '/api/alertas/capturas/validacion/csv', '_blank')">⬇ CSV para la tesis</button>
+    </span>
+  </div>
+  <p style="font-size:.78rem;color:var(--m);margin-bottom:12px">
+    Resumen cuantitativo calculado desde las conexiones reales guardadas: total, duración de la captura,
+    dispositivos y destinos distintos, y picos de actividad por minuto.
+  </p>
+  <div id="val-resumen" style="display:flex;gap:18px;flex-wrap:wrap;font-size:.8rem;color:var(--t);margin-bottom:12px"></div>
+  <canvas id="val-grafico" width="900" height="240" style="width:100%;max-width:100%;background:var(--s2);border:1px solid var(--b);border-radius:8px"></canvas>
+  <div id="val-leyenda" style="font-size:.72rem;color:var(--m);margin-top:6px"></div>
+  <div id="val-verdad" style="font-size:.78rem;color:var(--t);margin-top:8px"></div>
+</div>
 ${ROL_USUARIO === 'Administrador' ? `
 <div class="panel" style="margin-top:14px">
   <div class="ph"><span class="pt">🧠 MEJORAR EL MODELO CON DATOS REALES</span></div>
@@ -547,6 +565,7 @@ function clasificarNivel(d){
 
 function initRedReal(){
   actualizarEstadoRR();
+  cargarValidacionRR();
   if(!rrPolling) iniciarPollingRR();
   if(ROL_USUARIO === 'Administrador') cargarStatsReentrenamiento();
 }
@@ -625,6 +644,68 @@ function pollReentrenamiento(){
   }, 2000);
 }
 
+function dibujarGraficoValidacion(serie){
+  const c = document.getElementById('val-grafico');
+  if(!c) return;
+  const g = c.getContext('2d');
+  const W = c.width, H = c.height, ml = 46, mb = 28, mt = 12, mr = 10;
+  g.clearRect(0, 0, W, H);
+  if(!serie || !serie.length){
+    g.fillStyle = '#5a7a9a'; g.font = '14px sans-serif';
+    g.fillText('Aún no hay conexiones reales registradas.', ml, H / 2);
+    return;
+  }
+  const maxY = Math.max.apply(null, serie.map(p => p.total), 1);
+  const ancho = (W - ml - mr) / serie.length;
+  g.strokeStyle = '#1e3a5a'; g.fillStyle = '#5a7a9a'; g.font = '11px sans-serif';
+  for(let k = 0; k <= 4; k++){
+    const y = mt + (H - mt - mb) * (1 - k / 4);
+    g.beginPath(); g.moveTo(ml, y); g.lineTo(W - mr, y); g.stroke();
+    g.fillText(String(Math.round(maxY * k / 4)), 6, y + 4);
+  }
+  serie.forEach((p, i) => {
+    const x = ml + i * ancho + ancho * 0.1, w = ancho * 0.8;
+    const hT = (H - mt - mb) * p.total / maxY, hN = (H - mt - mb) * p.no_normal / maxY;
+    g.fillStyle = '#00d4ff'; g.fillRect(x, H - mb - hT, w, hT);
+    g.fillStyle = '#ffaa00'; g.fillRect(x, H - mb - hN, w, hN);
+  });
+  g.fillStyle = '#5a7a9a';
+  g.fillText(serie[0].minuto.slice(11), ml, H - 8);
+  const ult = serie[serie.length - 1].minuto.slice(11);
+  g.fillText(ult, W - mr - g.measureText(ult).width, H - 8);
+}
+
+function cargarValidacionRR(){
+  fetch(`${URL_BASE_API}/api/alertas/capturas/validacion`, {credentials:'include'}).then(r=>r.json()).then(d=>{
+    const res = document.getElementById('val-resumen');
+    if(!res) return;
+    const ley = document.getElementById('val-leyenda');
+    const ver = document.getElementById('val-verdad');
+    if(!d.total_flujos){
+      res.textContent = d.mensaje || 'Aún no hay capturas de red real registradas.';
+      dibujarGraficoValidacion([]);
+      if(ley) ley.textContent = ''; if(ver) ver.textContent = '';
+      return;
+    }
+    const dato = (t, v) => '<span>' + t + ': <b style="color:var(--a)">' + v + '</b></span>';
+    res.innerHTML =
+      dato('Conexiones', d.total_flujos) + dato('Duración', d.duracion_minutos + ' min') +
+      dato('Dispositivos identificados', d.dispositivos_identificados_distintos) +
+      dato('Destinos distintos', d.destinos_distintos) + dato('Normales', d.porcentaje_normal + '%') +
+      dato('Origen', Object.keys(d.origen_de_capturas || {}).map(k => k === 'psutil' ? 'modo de respaldo' : k).join(', '));
+    dibujarGraficoValidacion(d.serie_temporal);
+    if(ley) ley.innerHTML = '<span style="color:#00d4ff">■</span> conexiones por minuto &nbsp; <span style="color:#ffaa00">■</span> no normales por minuto';
+    if(ver){
+      const v = d.verdad_de_terreno_parcial;
+      ver.textContent = v
+        ? 'Verdad de terreno parcial (' + v.muestras_etiquetadas + ' etiquetadas por analistas): VP ' + v.vp + ' · FP ' + v.fp +
+          ' · VN ' + v.vn + ' · FN ' + v.fn + (v.precision !== null ? ' · Precisión ' + (v.precision * 100).toFixed(1) + '%' : '') +
+          (v.recall !== null ? ' · Recall ' + (v.recall * 100).toFixed(1) + '%' : '')
+        : 'Aún no hay conexiones etiquetadas por un analista; etiquetá desde el Centro de Alertas para calcular precisión y recall sobre tráfico real.';
+    }
+  }).catch(()=>{});
+}
+
 function actualizarEstadoRR(){
   fetch(`${URL_BASE_API}/api/monitoreo/estado?desde=0`, {credentials:'include'}).then(r=>r.json()).then(d=>{
     const btn = document.getElementById('rr-btn');
@@ -632,6 +713,14 @@ function actualizarEstadoRR(){
     const estadoEl = document.getElementById('rr-estado');
     const ifaceEl = document.getElementById('rr-iface-actual');
     if(!btn) return; // el usuario ya cambió de pestaña
+    const bk = document.getElementById('rr-backend');
+    if(bk){
+      if(d.activa && d.backend === 'psutil'){
+        bk.textContent = '⚠ MODO DE RESPALDO (sin Npcap): bytes y banderas aproximados'; bk.style.color = '#ffaa00';
+      } else if(d.activa && d.backend === 'scapy'){
+        bk.textContent = '🛰 Captura de paquetes (Scapy)'; bk.style.color = '#00ff88';
+      } else { bk.textContent = ''; }
+    }
 
     if(d.activa){
       dot.style.background = '#00ff88';
@@ -1387,6 +1476,11 @@ function alHTML(a,i){
        <span style="cursor:pointer;color:#ff8888" onclick="etiquetarDeteccion(${i},'NORMAL')">✗ Falso positivo</span>`
     : (a._etiquetado ? `<span style="color:#4a6a8a">✓ Etiquetado: ${a._etiquetado}</span>` : '');
 
+  const tiempoTag = a.tiempo_respuesta_objetivo
+    ? `<span style="font-size:.66rem;color:var(--m)" title="Tiempo de respuesta objetivo (Tabla 6)">⏱ ${a.tiempo_respuesta_objetivo}</span>` : '';
+  const planBtn = a.severidad === 'CRÍTICO'
+    ? `<span style="cursor:pointer;color:var(--a)" onclick="verPlanIA(${i}, this)">🤖 Plan IA</span>` : '';
+
   return`<div class="al-item" id="al-${i}">
     <div class="al-sev ${sc}"></div>
     <div class="al-body">
@@ -1394,10 +1488,25 @@ function alHTML(a,i){
       <div class="al-desc">${a.alerta?.descripcion||'Amenaza detectada'}</div>
       <div class="al-meta"><span>${ts}</span>
         <span class="cb ${cc}">${a.confianza}%</span>
+        ${tiempoTag} ${planBtn}
         ${etiquetaBtns}
       </div>
+      <div class="plan-ia"></div>
     </div>
   </div>`;}
+
+// Plan de respuesta de la IA para una alerta CRÍTICA (Tabla 6): se pide al abrirlo, no de forma
+// automática, para no consumir el límite del nivel gratuito del proveedor con cada detección.
+async function verPlanIA(i, el){
+  const a = alertas[i];
+  const item = el && el.closest ? el.closest('.al-item') : null;
+  const panel = item ? item.querySelector('.plan-ia') : null;
+  if(!a || !panel) return;
+  if(panel.dataset.abierto === '1'){ panel.innerHTML = ''; panel.dataset.abierto = '0'; return; }
+  panel.dataset.abierto = '1';
+  try{ await showIA(panel, a); }
+  catch(e){ panel.innerHTML = '<div style="color:#ff8888;font-size:.78rem">No se pudo obtener el plan de respuesta: ' + e.message + '</div>'; }
+}
 
 async function etiquetarDeteccion(i, etiqueta){
   const a = alertas[i];
@@ -1424,7 +1533,7 @@ function updDashAl(){
   const el=document.getElementById('dash-al');if(!el)return;
   el.innerHTML=alertas.length===0
     ?'<div style="color:var(--m);text-align:center;padding:16px;font-size:.8rem">Sin alertas</div>'
-    :alertas.slice(0,5).map((a,i)=>alHTML(a,i)).join('');
+    :alertas.slice(0,5).map(a=>alHTML(a,alertas.indexOf(a))).join('');
 }
 
 function filtrar(niv){
@@ -1432,7 +1541,7 @@ function filtrar(niv){
   const f=niv==='todas'?alertas:alertas.filter(a=>a.severidad===niv);
   el.innerHTML=f.length===0
     ?'<div style="color:var(--m);text-align:center;padding:30px">Sin alertas de ese nivel</div>'
-    :f.map((a,i)=>alHTML(a,i)).join('');
+    :f.map(a=>alHTML(a,alertas.indexOf(a))).join('');  // índice en la lista COMPLETA: etiquetarDeteccion(i) usa alertas[i]
 }
 
 // ── Contadores y log ───────────────────────────────────────────────────────

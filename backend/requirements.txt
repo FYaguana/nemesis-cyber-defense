@@ -7,12 +7,16 @@ qrcode[pil]>=7.4.0
 joblib>=1.3.0
 pandas>=2.0.0
 numpy>=1.24.0
-scikit-learn>=1.3.0
-tensorflow>=2.13.0
 psutil>=5.9.0
 
-# scapy es OPCIONAL: solo hace falta si elegís el backend de monitoreo
-# "scapy" (captura de paquetes real). En Windows requiere instalar Npcap
-# (https://npcap.com) y correr como Administrador. El backend por defecto
-# ahora es "psutil", que no necesita ninguno de los dos.
-# scapy>=2.5.0
+# Versiones FIJAS de las librerías que serializan los modelos: los archivos de
+# models/ (scaler.pkl, encoders.pkl, *.keras) se generaron con ESTAS versiones.
+# Con una versión distinta de scikit-learn, el scaler/encoder se carga con una
+# advertencia de incompatibilidad y los resultados podrían cambiar.
+scikit-learn==1.8.0
+tensorflow==2.21.0
+
+# Captura real de paquetes (Sección 4.5 de la tesis). Instalar el paquete NO requiere
+# Npcap; Npcap solo hace falta en Windows para capturar. Si Scapy no puede capturar
+# (p. ej. Windows sin Npcap) el sistema cae solo al modo de respaldo 'psutil'.
+scapy>=2.5.0

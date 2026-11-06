@@ -13,23 +13,18 @@ el Centro de Alertas -- esa es la etiqueta verdadera.
 """
 
 import os
-import json
+import shutil
+import tempfile
 import logging
 import threading
 from datetime import datetime
 
-import joblib
-
 from app.motor.preparacion_datos import preparar_datos_con_reales_y_base
-from app.motor.redes_neuronales import (
-    construir_mlp, construir_rnn, crear_ventanas_temporales,
-    entrenar_modelo, evaluar_modelo,
-)
+from app.motor.entrenamiento import entrenar_modelos_nemesis
 from app.motor.base_datos import obtener_capturas_etiquetadas, guardar_metricas
 from app.motor.procesador_nemesis import obtener_procesador
 
 DIRECTORIO_BACKEND = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-TAMANO_VENTANA_RNN = 10
 
 logger = logging.getLogger("nemesis.reentrenamiento")
 
@@ -64,39 +59,30 @@ class GestorReentrenamiento:
             self.progreso = {"paso": "Preparando datos (base NSL-KDD + reales confirmadas)...", "porcentaje": 15}
             datos = preparar_datos_con_reales_y_base(muestras_reales)
 
-            X_train, y_train = datos["X_train"], datos["y_train"]
-            X_val, y_val = datos["X_val"], datos["y_val"]
-            X_test, y_test = datos["X_test"], datos["y_test"]
-            clases = datos["clases"]
-            n_features, n_clases = datos["n_features"], datos["n_clases"]
-
             directorio_modelos = os.path.join(DIRECTORIO_BACKEND, "models")
             os.makedirs(directorio_modelos, exist_ok=True)
 
-            joblib.dump(datos["scaler"], os.path.join(directorio_modelos, "scaler.pkl"))
-            joblib.dump(datos["encoders"], os.path.join(directorio_modelos, "encoders.pkl"))
-            joblib.dump(datos["le_target"], os.path.join(directorio_modelos, "le_target.pkl"))
-            with open(os.path.join(directorio_modelos, "config.json"), "w") as archivo:
-                json.dump({"n_features": n_features, "n_clases": n_clases, "clases": clases}, archivo, indent=2)
+            # Se entrena en un directorio de PREPARACIÓN (dentro de models/, para que el reemplazo
+            # final sea atómico en el mismo sistema de archivos). Si algo falla a mitad, los modelos
+            # que están sirviendo tráfico quedan intactos (Sección 4.2: sin interrumpir el servicio).
+            preparacion = tempfile.mkdtemp(prefix=".reentrenando_", dir=directorio_modelos)
+            try:
+                def avance(paso, porcentaje):
+                    self.progreso = {"paso": paso, "porcentaje": porcentaje}
 
-            self.progreso = {"paso": f"Entrenando MLP ({epochs} épocas)...", "porcentaje": 30}
-            mlp = construir_mlp(n_features=n_features, n_clases=n_clases)
-            entrenar_modelo(mlp, X_train, y_train, X_val, y_val, epochs=epochs, ruta_guardado=directorio_modelos)
+                entrenados = entrenar_modelos_nemesis(datos, preparacion, epochs=epochs, callback_progreso=avance)
+                metricas_mlp, metricas_rnn = entrenados["metricas_mlp"], entrenados["metricas_rnn"]
 
-            self.progreso = {"paso": f"Entrenando RNN ({epochs} épocas)...", "porcentaje": 60}
-            X_seq_train, y_seq_train = crear_ventanas_temporales(X_train, y_train, TAMANO_VENTANA_RNN)
-            X_seq_val, y_seq_val = crear_ventanas_temporales(X_val, y_val, TAMANO_VENTANA_RNN)
-            X_seq_test, y_seq_test = crear_ventanas_temporales(X_test, y_test, TAMANO_VENTANA_RNN)
-            rnn = construir_rnn(n_features=n_features, n_clases=n_clases, window_size=TAMANO_VENTANA_RNN)
-            entrenar_modelo(rnn, X_seq_train, y_seq_train, X_seq_val, y_seq_val, epochs=epochs, ruta_guardado=directorio_modelos)
+                self.progreso = {"paso": "Publicando los nuevos modelos...", "porcentaje": 90}
+                for nombre in os.listdir(preparacion):
+                    os.replace(os.path.join(preparacion, nombre), os.path.join(directorio_modelos, nombre))
+            finally:
+                shutil.rmtree(preparacion, ignore_errors=True)
 
-            self.progreso = {"paso": "Evaluando modelos...", "porcentaje": 85}
-            metricas_mlp = evaluar_modelo(mlp, X_test, y_test, clases, directorio_modelos)
             guardar_metricas("Nemesis_MLP", metricas_mlp["recall"], metricas_mlp["precision"],
-                              metricas_mlp["f1_score"], metricas_mlp)
-            metricas_rnn = evaluar_modelo(rnn, X_seq_test, y_seq_test, clases, directorio_modelos)
+                             metricas_mlp["f1_score"], metricas_mlp)
             guardar_metricas("Nemesis_RNN", metricas_rnn["recall"], metricas_rnn["precision"],
-                              metricas_rnn["f1_score"], metricas_rnn)
+                             metricas_rnn["f1_score"], metricas_rnn)
 
             self.progreso = {"paso": "Recargando modelos en el sistema en vivo...", "porcentaje": 95}
             obtener_procesador().cargar_modelos()
