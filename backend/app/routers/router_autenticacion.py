@@ -10,7 +10,7 @@ from fastapi import APIRouter, Request, Response, HTTPException, Depends
 
 from app.servicios.servicio_autenticacion import ServicioAutenticacion
 from app.motor import gestion_usuarios
-from app.nucleo.gestor_sesiones import eliminar_sesion
+from app.nucleo.gestor_sesiones import eliminar_sesion, cuentas_demo_habilitadas
 from app.nucleo.seguridad import requiere_sesion_autenticada
 from app.nucleo.configuracion import URL_FRONTEND, COOKIE_SECURE
 
@@ -18,6 +18,13 @@ enrutador = APIRouter(prefix="/api/auth", tags=["Autenticación"])
 _servicio = ServicioAutenticacion()
 
 DURACION_COOKIE_SEGUNDOS = 8 * 60 * 60
+
+
+@enrutador.get("/config-publica")
+async def configuracion_publica():
+    """Dato NO sensible que necesita la pantalla de login para no ofrecer lo que no existe:
+    solo indica si las cuentas demo están habilitadas (por defecto no)."""
+    return {"cuentas_demo": cuentas_demo_habilitadas()}
 
 
 @enrutador.post("/check-email")

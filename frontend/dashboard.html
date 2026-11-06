@@ -1123,7 +1123,7 @@ async function analizar(tipo){
     if(d.alerta_generada)addAlerta(d);addLog(d);
     if(rb)mostrarRes(rb,d);updDashAl();
     if(d.clase!=='NORMAL'){const p=document.getElementById('ia-p');if(p)showIA(p,d);}
-  }catch(e){if(rb)rb.innerHTML='❌ Error: '+e.message}
+  }catch(e){if(rb)rb.innerHTML='❌ '+mensajeErrorRed(e)}
 }
 
 function mostrarRes(rb,d){
@@ -1325,6 +1325,15 @@ function agregarEventoRR(d, nivel){
   while(cont.children.length > 20) cont.removeChild(cont.lastChild);
 }
 
+
+// Un servidor ocupado o reiniciándose responde una página HTML y el navegador falla con
+// "Unexpected token '<'": se traduce a un mensaje que el usuario pueda entender.
+function mensajeErrorRed(e){
+  const m = String((e && e.message) || e);
+  if(/Unexpected token|JSON|Failed to fetch|NetworkError|Load failed/i.test(m))
+    return 'El servidor está ocupado o se está reiniciando. Espera unos segundos e inténtalo de nuevo.';
+  return 'Error: ' + m;
+}
 
 async function showIA(panel,d){
   panel.innerHTML=`<div class="ia-box"><div class="ia-th">🤖 IA analizando...

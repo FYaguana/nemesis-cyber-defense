@@ -86,6 +86,18 @@ def scapy_disponible() -> bool:
     return True
 
 
+MENSAJE_SIN_CAPTURA_EN_NUBE = (
+    "La captura de red real no está disponible en un servicio en la nube: el contenedor no tiene "
+    "permisos de captura y solo vería su propia red interna, no la de su organización. Ejecute el "
+    "backend en su propio equipo (Sección 5.5 de la tesis) para monitorear tráfico real; en la nube "
+    "use el Analizador para simular tráfico.")
+
+
+def _en_nube() -> bool:
+    """True si el backend corre en una plataforma cloud conocida (Render, Heroku, Cloud Run, Fly, Railway)."""
+    return any(os.environ.get(v) for v in ("RENDER", "DYNO", "K_SERVICE", "FLY_APP_NAME", "RAILWAY_ENVIRONMENT"))
+
+
 def _autoinicio_habilitado() -> bool:
     """El monitoreo arranca solo en equipos propios, pero NO en plataformas cloud:
     allí el contenedor solo ve su propia red interna (no la red del usuario) y
@@ -141,6 +153,11 @@ class GestorCapturaReal:
         solicitado = (backend or config.get("backend") or "auto").lower()
         if solicitado not in ("auto", "scapy", "psutil"):
             solicitado = "auto"
+
+        if solicitado == "auto" and _en_nube():
+            # Intentar capturar aquí solo produciría un error de permisos incomprensible.
+            self.error = MENSAJE_SIN_CAPTURA_EN_NUBE
+            return False, self.error
 
         if solicitado == "auto":
             backend_real = "scapy" if scapy_disponible() else "psutil"
@@ -308,7 +325,9 @@ class GestorCapturaReal:
                 self.progreso["transcurrido"] = round(time.time() - inicio_global, 1)
 
         except PermissionError:
-            self.error = "Permiso denegado. Ejecuta el servidor como Administrador/root."
+            self.error = ("Sin permisos para capturar paquetes. La captura de red real requiere ejecutar el "
+                          "backend como Administrador/root en el propio equipo (no está disponible en "
+                          "servicios en la nube).")
             logger.error(self.error)
         except Exception as e:
             self.error = str(e)
