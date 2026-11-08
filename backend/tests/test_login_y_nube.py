@@ -93,3 +93,21 @@ def test_el_dashboard_no_ofrece_configurar_el_correo_si_el_despliegue_no_puede_e
     html = leer("frontend", "dashboard.html")
     assert 'id="us-panel-correo"' in html and "CONFIG_PUBLICA.correo_disponible === false" in html
     assert "panel.style.display = 'none'" in html and 'id="us-inv-nota"' in html
+
+
+def test_ninguna_pagina_del_frontend_ofrece_microsoft_ni_mantiene_otra_copia_del_login():
+    """Regresion: index.html (la pagina de la RAIZ del sitio) era una copia antigua del login con el boton
+    de Microsoft y las cuentas demo; solo se habia corregido login.html y el usuario seguia viendo lo viejo."""
+    import os
+    carpeta = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "frontend")
+    for nombre in sorted(os.listdir(carpeta)):
+        if nombre.endswith(".html"):
+            html = leer("frontend", nombre)
+            assert "Continuar con Microsoft" not in html and "btn-ms" not in html, nombre
+            if nombre != "login.html":
+                assert "USUARIOS DEMO" not in html, f"{nombre} es otra copia de la pantalla de acceso"
+
+
+def test_la_raiz_del_sitio_lleva_a_la_pantalla_de_acceso_actual():
+    assert "index login.html;" in leer("frontend", "nginx.conf.template")
+    assert 'location.replace("login.html")' in leer("frontend", "index.html")

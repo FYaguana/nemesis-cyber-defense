@@ -2,7 +2,7 @@ server {
     listen 80;
     server_name localhost;
     root /usr/share/nginx/html;
-    index index.html;
+    index login.html;
 
     # Reverse proxy: todo lo que pega a /api/* se reenvía al backend real
     # (NEMESIS_API_URL). Así el navegador solo ve UN dominio (el del
