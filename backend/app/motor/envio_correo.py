@@ -19,7 +19,7 @@ import smtplib
 import logging
 from email.mime.text import MIMEText
 
-from app.nucleo.entorno import en_nube
+from app.nucleo.entorno import en_nube, smtp_disponible
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # backend/
 DATA_DIR = os.path.join(BASE_DIR, "data")
@@ -72,6 +72,10 @@ def _enviar(destinatario: str, asunto: str, cuerpo_html: str):
     config = obtener_config()
     if not config.get("gmail_user") or not config.get("gmail_app_password"):
         return False, "El envío de correo no está configurado."
+
+    if not smtp_disponible():
+        # Intentarlo solo haría esperar el tiempo de conexión (20 s) para terminar en un error.
+        return False, MENSAJE_SMTP_BLOQUEADO_EN_NUBE
 
     msg = MIMEText(cuerpo_html, "html", "utf-8")
     msg["Subject"] = asunto

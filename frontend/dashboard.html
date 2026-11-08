@@ -195,6 +195,7 @@ canvas{width:100%!important}
 const URL_BASE_API = (typeof window.NEMESIS_API_URL !== "undefined") ? window.NEMESIS_API_URL : "http://localhost:8000";
 // ── Estado global ──────────────────────────────────────────────────────────
 let ROL_USUARIO = null;
+let CONFIG_PUBLICA = {};   // qué ofrece este despliegue (captura de red, correo...)
 const C={criticas:0,advertencias:0,normales:0,total:0};
 let alertas=[], monitoreo=false, mTimer=null, pg_act='dashboard';
 let rrPolling=false, rrTimer=null, rrIndice=0, rrNormales=0, rrRevisar=0;
@@ -872,7 +873,7 @@ async function guardarApiKeyIA(){
 }
 
 function tUsuarios(){return`
-<div class="panel" style="margin-bottom:14px">
+<div class="panel" id="us-panel-correo" style="margin-bottom:14px">
   <div class="ph"><span class="pt">📧 CONFIGURACIÓN DE CORREO (Gmail)</span></div>
   <div id="us-email-estado" style="font-size:.82rem;color:var(--m)">Verificando...</div>
   <div id="us-email-form" style="display:none;margin-top:10px">
@@ -897,6 +898,9 @@ function tUsuarios(){return`
 
 <div class="panel" style="margin-bottom:14px">
   <div class="ph"><span class="pt">➕ INVITAR USUARIO</span></div>
+  <div id="us-inv-nota" style="display:none;font-size:.78rem;color:var(--m);margin-bottom:10px">
+    ℹ️ En esta instalación las invitaciones generan un enlace de activación para compartir
+    (el correo saliente no está disponible en la nube).</div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
     <div style="flex:1;min-width:180px">
       <label style="display:block;font-size:.7rem;color:var(--m);margin-bottom:4px">CORREO REAL</label>
@@ -942,6 +946,14 @@ async function initUsuarios(){
 }
 
 async function cargarEstadoEmail(){
+  // Si este despliegue no puede enviar correo (SMTP bloqueado), no se ofrece configurarlo.
+  if(CONFIG_PUBLICA.correo_disponible === false){
+    const panel = document.getElementById('us-panel-correo');
+    if(panel) panel.style.display = 'none';
+    const nota = document.getElementById('us-inv-nota');
+    if(nota) nota.style.display = 'block';
+    return;
+  }
   try{
     const r = await fetch(`${URL_BASE_API}/api/usuarios/configuracion/correo/estado`, {credentials:'include'});
     const d = await r.json();
@@ -1745,6 +1757,7 @@ async function cargarSesionYArrancar(){
   let capturaDisponible = true;
   try{
     const c = await (await fetch(`${URL_BASE_API}/api/auth/config-publica`, {credentials:'include'})).json();
+    CONFIG_PUBLICA = c;
     capturaDisponible = c.captura_red_disponible !== false;
   }catch(e){}
   if(!capturaDisponible){

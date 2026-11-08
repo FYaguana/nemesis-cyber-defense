@@ -10,7 +10,7 @@ from fastapi import APIRouter, Request, Response, HTTPException, Depends
 
 from app.servicios.servicio_autenticacion import ServicioAutenticacion
 from app.motor import gestion_usuarios
-from app.nucleo.entorno import en_nube
+from app.nucleo.entorno import en_nube, smtp_disponible
 from app.nucleo.gestor_sesiones import eliminar_sesion, cuentas_demo_habilitadas
 from app.nucleo.seguridad import requiere_sesion_autenticada
 from app.nucleo.configuracion import URL_FRONTEND, COOKIE_SECURE
@@ -25,8 +25,11 @@ DURACION_COOKIE_SEGUNDOS = 8 * 60 * 60
 async def configuracion_publica():
     """Datos NO sensibles para que la interfaz no ofrezca lo que este despliegue no tiene:
     - cuentas_demo: si las cuentas demo están habilitadas (por defecto no);
-    - captura_red_disponible: False en la nube, donde el contenedor no puede capturar tráfico real."""
-    return {"cuentas_demo": cuentas_demo_habilitadas(), "captura_red_disponible": not en_nube()}
+    - captura_red_disponible: False en la nube, donde el contenedor no puede capturar tráfico real;
+    - correo_disponible: False si el despliegue no puede enviar correo (SMTP bloqueado en planes gratuitos)."""
+    return {"cuentas_demo": cuentas_demo_habilitadas(),
+            "captura_red_disponible": not en_nube(),
+            "correo_disponible": smtp_disponible()}
 
 
 @enrutador.post("/check-email")

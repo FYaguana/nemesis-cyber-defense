@@ -100,3 +100,17 @@ El historial anterior de git **sigue conteniendo** `config_email.json`. Rotar la
   `NEMESIS_GMAIL_USER` y `NEMESIS_GMAIL_APP_PASSWORD`.
 - Si en tu red local falla con "puede estar bloqueando el puerto 465" (común en universidades y empresas), prueba con otra
   red, por ejemplo el hotspot del celular. Hazlo en el lugar donde vayas a presentar.
+
+## 8. Lo que NO se ofrece en la nube
+La interfaz solo muestra lo que el despliegue puede hacer (el backend lo informa en `/api/auth/config-publica`):
+
+| Función | En Render gratuito | Cómo se ve |
+|---|---|---|
+| Monitoreo de Red (captura real) | no disponible | el menú no aparece y no se consulta su estado |
+| Configuración de correo (Gmail) | no disponible (SMTP bloqueado) | el panel no aparece; las invitaciones generan un enlace para compartir |
+| Acceso con Microsoft | no existe | se eliminó del código (era una simulación) |
+| Cuentas demo | apagadas | no aparecen, salvo `NEMESIS_CUENTAS_DEMO=true` |
+
+Con un plan de pago de Render (que sí permite SMTP) puedes volver a habilitar el correo con la variable
+`NEMESIS_PERMITIR_SMTP_EN_NUBE=true`. En local (Docker o directo) todo se muestra normalmente.
+

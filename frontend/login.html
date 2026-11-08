@@ -38,13 +38,6 @@ input[type=email],input[type=text]{width:100%;padding:11px 14px;
   outline:none;transition:border-color .2s,box-shadow .2s}
 input:focus{border-color:#00d4ff;box-shadow:0 0 0 3px rgba(0,212,255,.1)}
 .ig{margin-bottom:18px}
-.btn-ms{width:100%;padding:12px;background:linear-gradient(135deg,#0062cc,#0078d4);
-  border:none;border-radius:9px;color:#fff;font-size:.95rem;font-weight:700;
-  font-family:'Rajdhani',sans-serif;cursor:pointer;display:flex;
-  align-items:center;justify-content:center;gap:10px;transition:all .2s;
-  box-shadow:0 4px 18px rgba(0,98,204,.3);letter-spacing:.5px}
-.btn-ms:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(0,98,204,.5)}
-.btn-ms svg{width:20px;height:20px;flex-shrink:0}
 .btn-p{width:100%;padding:12px;background:linear-gradient(135deg,#00d4ff,#0099cc);
   border:none;border-radius:9px;color:#050c14;font-size:.95rem;font-weight:700;
   font-family:'Rajdhani',sans-serif;cursor:pointer;letter-spacing:.5px;
@@ -112,16 +105,6 @@ input:focus{border-color:#00d4ff;box-shadow:0 0 0 3px rgba(0,212,255,.1)}
       <input type="email" id="email" placeholder="usuario@empresa.ec"
         onkeydown="if(event.key==='Enter')cont1()">
     </div>
-    <button class="btn-ms" id="btn-ms" style="display:none" onclick="loginMS()">
-      <svg viewBox="0 0 21 21" fill="none">
-        <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
-        <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
-        <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
-        <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
-      </svg>
-      Continuar con Microsoft
-    </button>
-    <div class="div" id="sep-ms" style="display:none">o ingresa tu correo</div>
     <button class="btn-p" onclick="cont1()">CONTINUAR →</button>
     <div class="demo" id="demo-box" style="display:none">
       <div class="demo-lbl">// USUARIOS DEMO //</div>
@@ -188,14 +171,14 @@ input:focus{border-color:#00d4ff;box-shadow:0 0 0 3px rgba(0,212,255,.1)}
 </div>
 <script>
 const URL_BASE_API = (typeof window.NEMESIS_API_URL !== "undefined") ? window.NEMESIS_API_URL : "http://localhost:8000";
-// Las cuentas demo y el acceso con Microsoft solo se muestran si el servidor lo indica (falla cerrado:
+// Las cuentas demo solo se muestran si el servidor lo indica (falla cerrado:
 // si no se puede consultar, quedan ocultos). Por defecto las cuentas demo están deshabilitadas.
 let demoActivo = false;
 fetch(URL_BASE_API + "/api/auth/config-publica", {credentials: "include"})
   .then(r => r.json())
   .then(c => {
     demoActivo = !!c.cuentas_demo;
-    if (demoActivo) ["btn-ms", "sep-ms", "demo-box"].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = ""; });
+    if (demoActivo) ["demo-box"].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = ""; });
   })
   .catch(() => {});
 let em='',usr=null;
@@ -221,19 +204,13 @@ function goS(n){
     d.className='dot'+(i===nDot?' a':i<nDot?' d':'');
   }
 }
-function loginMS(){
-  const e=document.getElementById('email').value.trim()||'admin@nemesis.ec';
-  document.getElementById('email').value=e;
-  cont1(true);
-}
-async function cont1(ms=false){
+async function cont1(){
   const email=document.getElementById('email').value.trim();
   document.getElementById('e1').style.display='none';
   if(!email){document.getElementById('e1').textContent='Ingresa tu correo.';
     document.getElementById('e1').style.display='block';return}
-  goS(3);document.getElementById('ld-msg').textContent=ms
-    ?'Conectando con Microsoft Entra ID...':'Verificando cuenta...';
-  await sleep(ms?2000:1200);
+  goS(3);document.getElementById('ld-msg').textContent='Verificando cuenta...';
+  await sleep(1200);
   const r=await fetch(`${URL_BASE_API}/api/auth/check-email`,{method:'POST',credentials:'include',
     headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
   const d=await r.json();

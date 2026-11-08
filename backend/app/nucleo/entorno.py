@@ -9,3 +9,12 @@ def en_nube() -> bool:
     """True si el backend corre en una plataforma cloud. Allí no hay captura de red real
     y, en los planes gratuitos, tampoco correo saliente por SMTP."""
     return any(os.environ.get(variable) for variable in _VARIABLES_NUBE)
+
+
+def smtp_disponible() -> bool:
+    """¿Puede este despliegue enviar correo por SMTP? En los planes gratuitos de la nube está bloqueado
+    (Render: puertos 25, 465 y 587). Quien use un plan de pago puede forzarlo con
+    NEMESIS_PERMITIR_SMTP_EN_NUBE=true."""
+    if not en_nube():
+        return True
+    return os.environ.get("NEMESIS_PERMITIR_SMTP_EN_NUBE", "").strip().lower() == "true"
