@@ -97,3 +97,10 @@ def test_el_rotulo_de_origen_del_plan_usa_los_campos_que_envia_el_backend():
     html = leer("frontend", "dashboard.html")
     assert "rec.generado_por_ia" in html and "rec.motivo_uso_plantilla" in html
     assert "rec._ia_meta ||" not in html
+
+
+def test_nginx_obliga_a_revalidar_las_paginas_tras_cada_despliegue():
+    """Regresion: el navegador conservaba un login antiguo (con Microsoft y usuarios demo) despues de desplegar."""
+    conf = leer("frontend", "nginx.conf.template")
+    bloque = conf[conf.index("location / {"):]
+    assert 'add_header Cache-Control "no-cache" always;' in bloque

@@ -10,6 +10,7 @@ from fastapi import APIRouter, Request, Response, HTTPException, Depends
 
 from app.servicios.servicio_autenticacion import ServicioAutenticacion
 from app.motor import gestion_usuarios
+from app.nucleo.entorno import en_nube
 from app.nucleo.gestor_sesiones import eliminar_sesion, cuentas_demo_habilitadas
 from app.nucleo.seguridad import requiere_sesion_autenticada
 from app.nucleo.configuracion import URL_FRONTEND, COOKIE_SECURE
@@ -22,9 +23,10 @@ DURACION_COOKIE_SEGUNDOS = 8 * 60 * 60
 
 @enrutador.get("/config-publica")
 async def configuracion_publica():
-    """Dato NO sensible que necesita la pantalla de login para no ofrecer lo que no existe:
-    solo indica si las cuentas demo están habilitadas (por defecto no)."""
-    return {"cuentas_demo": cuentas_demo_habilitadas()}
+    """Datos NO sensibles para que la interfaz no ofrezca lo que este despliegue no tiene:
+    - cuentas_demo: si las cuentas demo están habilitadas (por defecto no);
+    - captura_red_disponible: False en la nube, donde el contenedor no puede capturar tráfico real."""
+    return {"cuentas_demo": cuentas_demo_habilitadas(), "captura_red_disponible": not en_nube()}
 
 
 @enrutador.post("/check-email")

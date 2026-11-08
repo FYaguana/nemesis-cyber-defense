@@ -32,6 +32,9 @@ server {
 
     # Cada página HTML se sirve tal cual (login, dashboard, activar, etc.)
     location / {
+        # Las páginas cambian con cada despliegue: el navegador debe revalidarlas siempre. Sin esto
+        # podía seguir mostrando un login o un dashboard antiguos (p. ej. con botones que ya no existen).
+        add_header Cache-Control "no-cache" always;
         try_files $uri $uri.html $uri/ =404;
     }
 }

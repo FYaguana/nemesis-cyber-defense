@@ -4,14 +4,21 @@ from scapy.all import Ether, IP, TCP
 from tests.test_regresiones_infra import leer
 
 
-def test_la_configuracion_publica_es_accesible_sin_sesion_y_las_demo_estan_apagadas(cliente):
+def test_la_configuracion_publica_es_accesible_sin_sesion_y_las_demo_estan_apagadas(cliente, monkeypatch):
+    for variable in ("RENDER", "DYNO", "K_SERVICE", "FLY_APP_NAME", "RAILWAY_ENVIRONMENT"):
+        monkeypatch.delenv(variable, raising=False)
     r = cliente.get("/api/auth/config-publica")
-    assert r.status_code == 200 and r.json() == {"cuentas_demo": False}
+    assert r.status_code == 200 and r.json() == {"cuentas_demo": False, "captura_red_disponible": True}
+
+
+def test_en_la_nube_la_configuracion_publica_indica_que_no_hay_captura_de_red(cliente, monkeypatch):
+    monkeypatch.setenv("RENDER", "true")
+    assert cliente.get("/api/auth/config-publica").json()["captura_red_disponible"] is False
 
 
 def test_la_configuracion_publica_refleja_la_variable_de_entorno(cliente, monkeypatch):
     monkeypatch.setenv("NEMESIS_CUENTAS_DEMO", "true")
-    assert cliente.get("/api/auth/config-publica").json() == {"cuentas_demo": True}
+    assert cliente.get("/api/auth/config-publica").json()["cuentas_demo"] is True
 
 
 def test_el_login_oculta_cuentas_demo_y_microsoft_salvo_que_el_servidor_lo_indique():
@@ -56,3 +63,11 @@ def test_el_analizador_traduce_el_error_de_pagina_html_a_un_mensaje_entendible()
     html = leer("frontend", "dashboard.html")
     assert "function mensajeErrorRed" in html and "mensajeErrorRed(e)" in html
     assert "'❌ Error: '+e.message" not in html
+
+
+def test_el_dashboard_oculta_el_monitoreo_y_no_lo_consulta_si_el_despliegue_no_captura_red():
+    html = leer("frontend", "dashboard.html")
+    assert "captura_red_disponible" in html
+    assert "niRed.style.display = 'none'" in html
+    assert "if(capturaDisponible) iniciarPollingRR();" in html
+    assert "\n  iniciarPollingRR();\n  if(ROL_USUARIO" not in html, "ya no debe arrancar el sondeo sin condiciones"

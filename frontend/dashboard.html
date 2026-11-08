@@ -1740,8 +1740,20 @@ async function cargarSesionYArrancar(){
     return;
   }
 
+  // Qué ofrece ESTE despliegue: en la nube no hay captura de red real (el contenedor no puede capturar
+  // y solo vería su red interna). Si la consulta falla se asume disponible (la interfaz no se recorta).
+  let capturaDisponible = true;
+  try{
+    const c = await (await fetch(`${URL_BASE_API}/api/auth/config-publica`, {credentials:'include'})).json();
+    capturaDisponible = c.captura_red_disponible !== false;
+  }catch(e){}
+  if(!capturaDisponible){
+    const niRed = document.getElementById('ni-redreal');
+    if(niRed) niRed.style.display = 'none';
+  }
+
   render('dashboard');
-  iniciarPollingRR();
+  if(capturaDisponible) iniciarPollingRR();   // sin captura no hay nada que consultar cada pocos segundos
   if(ROL_USUARIO !== 'Administrador'){
     const niUsuarios = document.getElementById('ni-usuarios');
     if(niUsuarios) niUsuarios.style.display = 'none';
