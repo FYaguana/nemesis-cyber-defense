@@ -93,9 +93,7 @@ MENSAJE_SIN_CAPTURA_EN_NUBE = (
     "use el Analizador para simular tráfico.")
 
 
-def _en_nube() -> bool:
-    """True si el backend corre en una plataforma cloud conocida (Render, Heroku, Cloud Run, Fly, Railway)."""
-    return any(os.environ.get(v) for v in ("RENDER", "DYNO", "K_SERVICE", "FLY_APP_NAME", "RAILWAY_ENVIRONMENT"))
+from app.nucleo.entorno import en_nube as _en_nube  # noqa: E402  (detección compartida de entorno cloud)
 
 
 def _autoinicio_habilitado() -> bool:

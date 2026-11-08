@@ -84,3 +84,19 @@ El historial anterior de git **sigue conteniendo** `config_email.json`. Rotar la
 - Benchmark sintético casi perfectamente separable (ver sección 4). Para resultados comparables con la literatura, evaluar con el NSL-KDD oficial.
 - En Render el monitoreo de red real no tiene sentido (solo vería la red interna del contenedor): usarlo en un equipo propio.
 - La captura con Scapy en Windows requiere Npcap; sin él el sistema usa el modo de respaldo.
+
+## 7. Correo de invitaciones: dónde funciona y dónde no
+
+- **Render (plan gratuito): no envía correo.** Desde septiembre de 2025 bloquea el tráfico saliente a los puertos SMTP
+  25, 465 y 587; Gmail usa 465. El sistema igual **crea el usuario y muestra el enlace de activación** para compartirlo
+  a mano, y el mensaje ahora lo explica en vez de mostrar `[Errno 101] Network is unreachable`. Enviar desde Render
+  exige una instancia de pago (desde 7 USD/mes) o un servicio de correo por API.
+- **En tu PC (Docker): sí envía**, por Gmail con contraseña de aplicación, como describe la tesis (Sección 4.6):
+  1. `copy .env.example .env` y completa `.env` (correo del administrador, Gmail y contraseña de aplicación).
+  2. `docker compose up --build`.
+  3. El enlace de activación aparece con `docker compose logs backend | Select-String "ADMINISTRADOR"`.
+  El archivo `.env` está en `.gitignore`: nunca se sube a git.
+- Las credenciales de Gmail pueden venir de la pantalla del Administrador (tiene prioridad) o de las variables
+  `NEMESIS_GMAIL_USER` y `NEMESIS_GMAIL_APP_PASSWORD`.
+- Si en tu red local falla con "puede estar bloqueando el puerto 465" (común en universidades y empresas), prueba con otra
+  red, por ejemplo el hotspot del celular. Hazlo en el lugar donde vayas a presentar.

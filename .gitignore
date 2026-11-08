@@ -20,3 +20,4 @@ venv/
 # --- Otros ---
 node_modules/
 .DS_Store
+backend/data/config_ia.json

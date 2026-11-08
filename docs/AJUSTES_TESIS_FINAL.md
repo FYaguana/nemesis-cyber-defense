@@ -112,6 +112,7 @@ navegador ve un único origen (sin CORS y con cookie `SameSite=Lax`)."
 - 4.6: la contraseña/MFA son reales; las cuentas demo existen solo si `NEMESIS_CUENTAS_DEMO=true` (desactivadas por defecto).
 - 4.8: la clave de la API se envía en el encabezado `x-goog-api-key`.
 - 4.2 (etapa 4): la publicación de los modelos reentrenados es atómica (ver sección A).
+- 4.6 (invitaciones): agrega que el envío por Gmail requiere salida SMTP; el plan gratuito de Render la bloquea, por lo que en ese entorno el sistema muestra el enlace de activación para compartirlo a mano, y el envío por correo se demuestra en la instalación local.
 
 ## C. Cómo verificar todo
 ```bash

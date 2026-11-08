@@ -10,6 +10,11 @@ services:
     environment:
       - ORIGENES_FRONTEND_PERMITIDOS=http://localhost:5173
       - COOKIE_SECURE=false
+      # Estos valores salen del archivo .env (ver .env.example); si están vacíos, no se usan.
+      - NEMESIS_ADMIN_EMAIL=${NEMESIS_ADMIN_EMAIL:-}
+      - NEMESIS_GMAIL_USER=${NEMESIS_GMAIL_USER:-}
+      - NEMESIS_GMAIL_APP_PASSWORD=${NEMESIS_GMAIL_APP_PASSWORD:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
     cap_add:
       - NET_ADMIN
       - NET_RAW

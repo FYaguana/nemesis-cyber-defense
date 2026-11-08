@@ -19,6 +19,8 @@ import smtplib
 import logging
 from email.mime.text import MIMEText
 
+from app.nucleo.entorno import en_nube
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # backend/
 DATA_DIR = os.path.join(BASE_DIR, "data")
 CONFIG_PATH = os.path.join(DATA_DIR, "config_email.json")
@@ -28,14 +30,32 @@ os.makedirs(DATA_DIR, exist_ok=True)
 logger = logging.getLogger("NEMESIS-CORREO")
 
 
+MENSAJE_SMTP_BLOQUEADO_EN_NUBE = (
+    "el plan gratuito de la nube bloquea el correo saliente (puertos SMTP). El envío funciona al "
+    "ejecutar el sistema en su propio equipo; mientras tanto comparta el enlace de activación a mano")
+
+
+def _config_desde_entorno() -> dict:
+    """Credenciales de Gmail por variables de entorno (NEMESIS_GMAIL_USER / NEMESIS_GMAIL_APP_PASSWORD).
+    Sirven cuando el disco no persiste (nube) o para no cargarlas desde la pantalla en cada arranque."""
+    usuario = os.environ.get("NEMESIS_GMAIL_USER", "").strip()
+    clave = os.environ.get("NEMESIS_GMAIL_APP_PASSWORD", "").strip()
+    return {"gmail_user": usuario, "gmail_app_password": clave} if usuario and clave else {}
+
+
 def obtener_config():
+    """Lo guardado desde la pantalla del Administrador tiene prioridad; si no hay una configuración
+    COMPLETA guardada se usan las variables de entorno."""
+    guardada = {}
     if os.path.exists(CONFIG_PATH):
         try:
             with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-                return json.load(f)
+                guardada = json.load(f)
         except Exception:
-            pass
-    return {}
+            guardada = {}
+    if guardada.get("gmail_user") and guardada.get("gmail_app_password"):
+        return guardada
+    return _config_desde_entorno() or guardada
 
 
 def guardar_config(gmail_user: str, gmail_app_password: str):
@@ -67,6 +87,12 @@ def _enviar(destinatario: str, asunto: str, cuerpo_html: str):
         return False, "Credenciales de Gmail inválidas (usá una contraseña de aplicación, no la normal)."
     except Exception as e:
         logger.error("Error enviando correo a %s: %s", destinatario, e)
+        es_fallo_de_red = isinstance(e, OSError) and not isinstance(e, smtplib.SMTPException)
+        if es_fallo_de_red and en_nube():
+            return False, MENSAJE_SMTP_BLOQUEADO_EN_NUBE
+        if es_fallo_de_red:
+            return False, (f"no se pudo conectar con Gmail (smtp.gmail.com:465): {e}. Su red puede estar "
+                           "bloqueando ese puerto (común en redes de universidades y empresas); pruebe con otra red")
         return False, str(e)
 
 

@@ -54,8 +54,19 @@ def test_los_scripts_de_contenedor_usan_saltos_de_linea_lf():
 
 def test_gitignore_protege_los_secretos():
     gi = leer(".gitignore").splitlines()
-    for secreto in ("backend/data/config_email.json", "backend/data/sesiones.json", "backend/data/nemesis.db"):
+    for secreto in ("backend/data/config_email.json", "backend/data/sesiones.json", "backend/data/nemesis.db",
+                    "backend/data/config_ia.json", ".env"):   # config_ia.json guarda la clave de Gemini
         assert secreto in gi, secreto
+
+
+def test_docker_compose_toma_los_secretos_de_un_env_que_no_se_sube_a_git():
+    import yaml
+    entorno = yaml.safe_load(leer("docker-compose.yml"))["services"]["backend"]["environment"]
+    for variable in ("NEMESIS_ADMIN_EMAIL", "NEMESIS_GMAIL_USER", "NEMESIS_GMAIL_APP_PASSWORD", "GEMINI_API_KEY"):
+        assert f"{variable}=${{{variable}:-}}" in entorno, variable   # valor desde .env, vacío por defecto
+    ejemplo = leer(".env.example")
+    for variable in ("NEMESIS_ADMIN_EMAIL", "NEMESIS_GMAIL_USER", "NEMESIS_GMAIL_APP_PASSWORD", "GEMINI_API_KEY"):
+        assert f"{variable}=\n" in ejemplo, f"{variable} debe ir VACÍO en .env.example (no contiene secretos)"
 
 
 def test_workflow_ci_coincide_con_lo_que_describe_la_tesis():
